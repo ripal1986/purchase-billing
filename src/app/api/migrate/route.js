@@ -5,6 +5,7 @@ import { getGoogleSheetsClient } from '@/lib/googleAuth';
 const SPREADSHEET_ID = '1Xsb46eOHnii34YM_UEY3LERAFrggJZMrPzm1vVc8TNw';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export async function POST(req) {
   try {
@@ -66,34 +67,50 @@ export async function POST(req) {
     const directRows = parseSheetRows(sheetResponse.data.valueRanges[1].values, 'Direct');
     const allRows = [...apmcRows, ...directRows];
 
-    let insertedCount = 0;
+    // 2. Fetch existing records from Neon in a single fast query
+    const existingRows = await sql`
+      SELECT voucher_id, daily_purchase_id, date, purchase_type 
+      FROM purchases
+    `;
+
+    const existingVouchers = new Set();
+    const existingKeys = new Set();
+
+    for (const r of existingRows) {
+      if (r.voucher_id) existingVouchers.add(r.voucher_id);
+      if (r.date && r.daily_purchase_id) {
+        existingKeys.add(`${r.purchase_type}_${r.date}_${r.daily_purchase_id}`);
+      }
+    }
+
+    // 3. Filter rows that need to be inserted
+    const rowsToInsert = [];
     let skippedCount = 0;
 
     for (const r of allRows) {
-      // Check if already exists by voucherId if non-empty, or by dailyPurchaseId + date + type
-      let existing = [];
-      if (r.voucherId) {
-        existing = await sql`
-          SELECT id FROM purchases 
-          WHERE voucher_id = ${r.voucherId} 
-          LIMIT 1
-        `;
-      } else if (r.dailyPurchaseId && r.date) {
-        existing = await sql`
-          SELECT id FROM purchases 
-          WHERE daily_purchase_id = ${String(r.dailyPurchaseId)} 
-            AND date = ${r.date} 
-            AND purchase_type = ${r.purchaseType} 
-          LIMIT 1
-        `;
+      if (r.voucherId && existingVouchers.has(r.voucherId)) {
+        skippedCount++;
+        continue;
       }
-
-      if (existing.length > 0) {
+      const key = `${r.purchaseType}_${r.date}_${r.dailyPurchaseId}`;
+      if (r.dailyPurchaseId && r.date && existingKeys.has(key)) {
         skippedCount++;
         continue;
       }
 
-      await sql`
+      if (r.voucherId) existingVouchers.add(r.voucherId);
+      if (r.dailyPurchaseId && r.date) existingKeys.add(key);
+
+      rowsToInsert.push(r);
+    }
+
+    // 4. Fast batch insertion in chunks of 25 with Promise.all
+    let insertedCount = 0;
+    const CHUNK_SIZE = 25;
+
+    for (let i = 0; i < rowsToInsert.length; i += CHUNK_SIZE) {
+      const chunk = rowsToInsert.slice(i, i + CHUNK_SIZE);
+      await Promise.all(chunk.map(r => sql`
         INSERT INTO purchases (
           voucher_id, purchase_type, date, daily_purchase_id, farmer_name,
           village_name, mobile_number, variety, net_weight, deduction_grams,
@@ -105,13 +122,13 @@ export async function POST(req) {
           ${r.totalDeduction}, ${r.finalWeight}, ${r.purchaseRate}, ${r.finalAmount}, ${r.status},
           ${r.cashAmount}, ${r.chequeAmount}, ${r.chequeNumber}, ${r.bankName}, ${r.itemsJSON}
         );
-      `;
-      insertedCount++;
+      `));
+      insertedCount += chunk.length;
     }
 
     return NextResponse.json({
       success: true,
-      message: `Migration completed successfully! Inserted ${insertedCount} rows, skipped ${skippedCount} existing rows.`,
+      message: `માઈગ્રેશન સફળતાપૂર્વક પૂર્ણ થયું! ${insertedCount} નવી એન્ટ્રીઓ Neon માં ઉમેરાઈ, ${skippedCount} એન્ટ્રીઓ પહેલેથી હાજર હતી.`,
       insertedCount,
       skippedCount,
       totalSheetsRows: allRows.length

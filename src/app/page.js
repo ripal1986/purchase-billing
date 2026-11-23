@@ -1532,13 +1532,18 @@ export default function Home() {
                   setIsMigrating(true);
                   try {
                     const res = await fetch('/api/migrate', { method: 'POST' });
-                    const data = await res.json();
-                    if (data.success) {
+                    let data;
+                    try {
+                      data = await res.json();
+                    } catch (e) {
+                      throw new Error(res.statusText || "સર્વર પ્રતિસાદ મળ્યો નથી");
+                    }
+                    if (data && data.success) {
                       alert(data.message);
                       setDbSource('neon');
                       fetchRecentEntries();
                     } else {
-                      alert("માઈગ્રેશન એરર: " + (data.error || "કંઈક ખોટું થયું"));
+                      alert("માઈગ્રેશન એરર: " + (data?.error || "કંઈક ખોટું થયું"));
                     }
                   } catch (err) {
                     alert("કનેક્શન એરર: " + err.message);
