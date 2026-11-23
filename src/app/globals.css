@@ -1295,20 +1295,20 @@ input[type="number"] {
   }
 }
 
-.desinama-col-jama {
+.desinama-col-udhar {
   padding: 1.25rem;
   background: #fafcf9;
   border-bottom: 2px solid var(--surface-border);
 }
 
 @media (min-width: 860px) {
-  .desinama-col-jama {
+  .desinama-col-udhar {
     border-bottom: none;
     border-right: 2px dashed rgba(46, 125, 50, 0.25);
   }
 }
 
-.desinama-col-udhar {
+.desinama-col-jama {
   padding: 1.25rem;
   background: #ffffff;
 }
@@ -1371,11 +1371,11 @@ input[type="number"] {
   .desinama-grid {
     grid-template-columns: 1fr 1fr !important;
   }
-  .desinama-col-jama {
+  .desinama-col-udhar {
     border-right: 2px solid #333 !important;
     background: transparent !important;
   }
-  .desinama-col-udhar {
+  .desinama-col-jama {
     background: transparent !important;
   }
 }
