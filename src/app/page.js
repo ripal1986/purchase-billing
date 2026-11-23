@@ -1365,7 +1365,7 @@ export default function Home() {
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                     <span style={{ fontWeight: "bold", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                       {entry.voucherId} 
-                      <span style={{ fontSize: "0.75rem", background: "rgba(111, 17, 19, 0.1)", color: "var(--primary)", padding: "2px 6px", borderRadius: "4px" }}>
+                      <span style={{ fontSize: "0.75rem", background: "rgba(46, 125, 50, 0.1)", color: "var(--primary)", padding: "2px 6px", borderRadius: "4px" }}>
                         {entry.sheetName === 'APMC' ? 'APMC' : 'Direct'}
                       </span>
                     </span>
@@ -1806,8 +1806,8 @@ export default function Home() {
                     fontSize: "12px", 
                     fontWeight: "bold", 
                     borderRadius: "6px", 
-                    border: directBillFormat === 'modern' ? "2px solid #6F1113" : "1px solid #cbd5e1", 
-                    background: directBillFormat === 'modern' ? "#6F1113" : "#fff", 
+                    border: directBillFormat === 'modern' ? "2px solid var(--primary)" : "1px solid #cbd5e1", 
+                    background: directBillFormat === 'modern' ? "var(--primary)" : "#fff", 
                     color: directBillFormat === 'modern' ? "#fff" : "#334155", 
                     cursor: "pointer" 
                   }}>
@@ -1821,8 +1821,8 @@ export default function Home() {
                     fontSize: "12px", 
                     fontWeight: "bold", 
                     borderRadius: "6px", 
-                    border: directBillFormat === 'gujarati' ? "2px solid #6F1113" : "1px solid #cbd5e1", 
-                    background: directBillFormat === 'gujarati' ? "#6F1113" : "#fff", 
+                    border: directBillFormat === 'gujarati' ? "2px solid var(--primary)" : "1px solid #cbd5e1", 
+                    background: directBillFormat === 'gujarati' ? "var(--primary)" : "#fff", 
                     color: directBillFormat === 'gujarati' ? "#fff" : "#334155", 
                     cursor: "pointer" 
                   }}>
@@ -2320,8 +2320,8 @@ export default function Home() {
             </div>
             
             <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
-              <button onClick={() => { handleExportTallyXML('APMC'); setShowExportModal(false); }} className="btn btn-primary" style={{ flex: 1, backgroundColor: "#6F1113" }}>APMC XML</button>
-              <button onClick={() => { handleExportTallyXML('Direct'); setShowExportModal(false); }} className="btn btn-primary" style={{ flex: 1, backgroundColor: "#6F1113" }}>Direct XML</button>
+              <button onClick={() => { handleExportTallyXML('APMC'); setShowExportModal(false); }} className="btn btn-primary" style={{ flex: 1, backgroundColor: "var(--primary)" }}>APMC XML</button>
+              <button onClick={() => { handleExportTallyXML('Direct'); setShowExportModal(false); }} className="btn btn-primary" style={{ flex: 1, backgroundColor: "var(--primary)" }}>Direct XML</button>
             </div>
           </div>
         </div>
