@@ -100,8 +100,8 @@ export async function POST(req) {
     if (sql) {
       try {
         await initDb();
-        const parsedId = parseInt(id, 10);
-        let updatedRows;
+        const parsedId = parseInt(id || rowIndex, 10);
+        let updatedRows = [];
 
         if (!isNaN(parsedId) && parsedId > 0) {
           updatedRows = await sql`
@@ -130,7 +130,9 @@ export async function POST(req) {
             WHERE id = ${parsedId}
             RETURNING id;
           `;
-        } else if (voucherId) {
+        }
+
+        if ((!updatedRows || updatedRows.length === 0) && voucherId) {
           updatedRows = await sql`
             UPDATE purchases SET
               purchase_type = ${purchaseType},

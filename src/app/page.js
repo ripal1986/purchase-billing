@@ -531,6 +531,7 @@ export default function Home() {
       const actualVariety = formData.variety === "Other" ? formData.customVariety : formData.variety;
 
       const payload = {
+        id: editingEntry.id,
         rowIndex: editingEntry.rowIndex,
         oldSheetName: editingEntry.sheetName,
         purchaseType: formData.purchaseType,
@@ -597,9 +598,18 @@ export default function Home() {
       }];
     }
 
+    // Ensure date is formatted as YYYY-MM-DD for date input
+    let formattedDate = "";
+    if (entry.date) {
+      formattedDate = normalizeToYMD(entry.date, entry.sheetName);
+    }
+    if (!formattedDate) {
+      formattedDate = new Date().toISOString().split("T")[0];
+    }
+
     setFormData({
       purchaseType: (entry.sheetName === 'APMC' || entry.sheetName === 'Sheet1') ? 'APMC' : 'Direct',
-      date: entry.date,
+      date: formattedDate,
       farmerName: entry.farmerName,
       villageName: entry.villageName || "",
       mobileNumber: entry.mobileNumber || "",
@@ -1306,22 +1316,34 @@ export default function Home() {
         <div className="modal-overlay">
           <div className="glass-panel animate-fade-in" style={{ padding: "1.5rem", maxWidth: "500px", width: "90%", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <h2 style={{ color: "var(--primary)" }}>ચેક અને અપ્રુવ કરો (વાઉચર: {editingEntry.voucherId})</h2>
+              <h2 style={{ color: "var(--primary)" }}>{editingEntry.status === "Completed" ? "એન્ટ્રી એડિટ કરો" : "ચેક અને અપ્રુવ કરો"} (વાઉચર: {editingEntry.voucherId})</h2>
               <button onClick={() => { setEditingEntry(null); setFormData(initialForm); }} className="btn btn-outline" style={{ padding: "0.5rem" }}><X size={18} /></button>
             </div>
             
             <form onSubmit={handleAdminApprove}>
               <div className="grid-responsive-2" style={{ marginBottom: "1rem" }}>
                 <div className="form-group">
-                  <label className="form-label">ખરીદીનો પ્રકાર</label>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button type="button" onClick={() => handleInputChange({ target: { name: 'purchaseType', value: 'APMC' } })} className={`btn ${formData.purchaseType === 'APMC' ? 'btn-primary' : 'btn-outline'}`} style={{ flex: 1, padding: "0.5rem", fontSize: "0.9rem" }}>APMC</button>
-                    <button type="button" onClick={() => handleInputChange({ target: { name: 'purchaseType', value: 'Direct' } })} className={`btn ${formData.purchaseType === 'Direct' ? 'btn-primary' : 'btn-outline'}`} style={{ flex: 1, padding: "0.5rem", fontSize: "0.9rem" }}>ડાયરેક્ટ</button>
-                  </div>
+                  <label className="form-label">તારીખ (Date)</label>
+                  <input 
+                    type="date" 
+                    className="form-input" 
+                    name="date" 
+                    value={formData.date || ""} 
+                    onChange={handleInputChange} 
+                    required 
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">વાઉચર નં. (વિકલ્પ)</label>
                   <input type="tel" inputMode="numeric" pattern="[0-9]*" className="form-input" name="voucherId" value={formData.voucherId || ""} onChange={handleInputChange} required />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: "1rem" }}>
+                <label className="form-label">ખરીદીનો પ્રકાર</label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button type="button" onClick={() => handleInputChange({ target: { name: 'purchaseType', value: 'APMC' } })} className={`btn ${formData.purchaseType === 'APMC' ? 'btn-primary' : 'btn-outline'}`} style={{ flex: 1, padding: "0.5rem", fontSize: "0.9rem" }}>APMC</button>
+                  <button type="button" onClick={() => handleInputChange({ target: { name: 'purchaseType', value: 'Direct' } })} className={`btn ${formData.purchaseType === 'Direct' ? 'btn-primary' : 'btn-outline'}`} style={{ flex: 1, padding: "0.5rem", fontSize: "0.9rem" }}>ડાયરેક્ટ</button>
                 </div>
               </div>
 
@@ -1393,7 +1415,7 @@ export default function Home() {
               </div>
 
               <button type="submit" className="btn btn-success" style={{ width: "100%", marginTop: "1.5rem" }} disabled={isProcessing}>
-                {isProcessing ? "પ્રોસેસિંગ..." : "પેમેન્ટ સેવ કરો અને ફાઈનલ કરો"}
+                {isProcessing ? "પ્રોસેસિંગ..." : (editingEntry.status === "Completed" ? "ફેરફારો સેવ કરો (Save Changes)" : "પેમેન્ટ સેવ કરો અને ફાઈનલ કરો")}
               </button>
             </form>
           </div>
