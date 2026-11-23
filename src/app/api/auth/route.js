@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { google } from 'googleapis';
-import path from 'path';
 import { getDb, initDb } from '@/lib/db';
+import { getGoogleSheetsClient } from '@/lib/googleAuth';
 
 export async function POST(req) {
   try {
@@ -37,17 +36,7 @@ export async function POST(req) {
     // 2. If not found in Neon, check Google Sheets fallback
     if (!settings.firmName) {
       try {
-        let authOptions = { scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] };
-        if (process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_CLIENT_EMAIL) {
-          authOptions.credentials = {
-            client_email: process.env.GOOGLE_CLIENT_EMAIL,
-            private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-          };
-        } else {
-          authOptions.keyFile = path.join(process.cwd(), 'google-credentials.json');
-        }
-        const auth = new google.auth.GoogleAuth(authOptions);
-        const sheets = google.sheets({ version: 'v4', auth });
+        const sheets = getGoogleSheetsClient(true);
         const response = await sheets.spreadsheets.values.get({
           spreadsheetId: process.env.GOOGLE_SHEET_ID || '1Xsb46eOHnii34YM_UEY3LERAFrggJZMrPzm1vVc8TNw',
           range: 'APMC!Z1:AG1',
