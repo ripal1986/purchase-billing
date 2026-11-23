@@ -82,6 +82,15 @@ export default function Home() {
   const [endDate, setEndDate] = useState("");
   const [expandedEntryIdx, setExpandedEntryIdx] = useState(null);
 
+  // Report Tab State
+  const [reportDate, setReportDate] = useState(() => {
+    const today = new Date();
+    return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  });
+  const [reportTypeFilter, setReportTypeFilter] = useState("all"); // "all", "APMC", "Direct"
+  const [reportPaymentFilter, setReportPaymentFilter] = useState("all"); // "all", "cash", "cheque", "baki"
+  const [reportViewMode, setReportViewMode] = useState("both"); // "both", "purchase", "payment"
+
   // Settings state
   const [voucherSettings, setVoucherSettings] = useState({
     apmcStart: 10001,
@@ -273,7 +282,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (role === "admin" || activeTab === "recent" || activeTab === "pending" || activeTab === "completed") {
+    if (role === "admin" || activeTab === "recent" || activeTab === "pending" || activeTab === "completed" || activeTab === "report") {
       fetchRecentEntries();
     }
   }, [activeTab, role]);
@@ -940,6 +949,12 @@ export default function Home() {
               <span className="nav-label">Records</span>
             </button>
           )}
+          {(role === "admin" || role === "helper") && (
+            <button onClick={() => setActiveTab("report")} className={`header-nav-btn ${activeTab === "report" ? "active" : ""}`} title="Report">
+              <FileText className="nav-icon" />
+              <span className="nav-label">રિપોર્ટ</span>
+            </button>
+          )}
           {role === "admin" && (
             <button onClick={() => setActiveTab("pending")} className={`header-nav-btn ${activeTab === "pending" ? "active" : ""}`} title="Pending">
               <Clock className="nav-icon" />
@@ -1598,6 +1613,510 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* REPORT TAB: DESINAMA DAILY REPORT */}
+      {activeTab === "report" && (() => {
+        // Filter entries for the selected day in Report tab
+        const reportDayEntries = recentEntries.filter(entry => {
+          if (reportDate) {
+            const entryNorm = normalizeToYMD(entry.date, entry.sheetName);
+            if (entryNorm !== reportDate) return false;
+          }
+          if (reportTypeFilter !== "all") {
+            const type = entry.purchaseType || entry.sheetName;
+            if (type !== reportTypeFilter) return false;
+          }
+          return true;
+        });
+
+        // Calculate totals for Report
+        let reportTotalPurchaseAmount = 0;
+        let reportTotalWeight = 0;
+        let reportTotalCashPaid = 0;
+        let reportTotalChequePaid = 0;
+        let reportTotalBakiAmount = 0;
+        let reportBakiCount = 0;
+
+        const reportPurchaseList = [];
+        const reportPaymentList = [];
+
+        reportDayEntries.forEach((entry) => {
+          const finalAmt = parseFloat(entry.finalAmount) || 0;
+          const finalWt = parseFloat(entry.finalWeight) || 0;
+          const cashAmt = parseFloat(entry.cashAmount) || 0;
+          const chequeAmt = parseFloat(entry.chequeAmount) || 0;
+          const paidTotal = cashAmt + chequeAmt;
+          const bakiAmt = Math.max(0, finalAmt - paidTotal);
+
+          reportTotalPurchaseAmount += finalAmt;
+          reportTotalWeight += finalWt;
+          reportTotalCashPaid += cashAmt;
+          reportTotalChequePaid += chequeAmt;
+          reportTotalBakiAmount += bakiAmt;
+          if (bakiAmt > 0) reportBakiCount++;
+
+          // Purchase side item
+          reportPurchaseList.push({
+            id: entry.id || entry.voucherId,
+            voucherId: entry.voucherId,
+            purchaseType: entry.purchaseType || entry.sheetName,
+            farmerName: entry.farmerName,
+            villageName: entry.villageName,
+            mobileNumber: entry.mobileNumber,
+            variety: entry.variety,
+            finalWeight: finalWt,
+            purchaseRate: entry.purchaseRate,
+            finalAmount: finalAmt,
+            rawEntry: entry
+          });
+
+          // Payment side items (Cash, Cheque, Baki)
+          if (cashAmt > 0) {
+            reportPaymentList.push({
+              type: 'cash',
+              farmerName: entry.farmerName,
+              villageName: entry.villageName,
+              voucherId: entry.voucherId,
+              amount: cashAmt,
+              label: 'રોકડ ચૂકવણી (Cash)',
+              rawEntry: entry
+            });
+          }
+
+          if (chequeAmt > 0) {
+            reportPaymentList.push({
+              type: 'cheque',
+              farmerName: entry.farmerName,
+              villageName: entry.villageName,
+              voucherId: entry.voucherId,
+              chequeNumber: entry.chequeNumber,
+              bankName: entry.bankName || voucherSettings.bankName,
+              amount: chequeAmt,
+              label: 'ચેક ચૂકવણી (Cheque)',
+              rawEntry: entry
+            });
+          }
+
+          if (bakiAmt > 0) {
+            reportPaymentList.push({
+              type: 'baki',
+              farmerName: entry.farmerName,
+              villageName: entry.villageName,
+              mobileNumber: entry.mobileNumber,
+              voucherId: entry.voucherId,
+              amount: bakiAmt,
+              label: 'પેમેન્ટ બાકી (Due/Pending)',
+              rawEntry: entry
+            });
+          }
+        });
+
+        const handleShareReportWhatsApp = () => {
+          const dmy = reportDate ? reportDate.split('-').reverse().join('/') : 'બધા દિવસો';
+          let text = `🌾 *${voucherSettings.firmName || "દર્શન સીડ્સ"} - દૈનિક રોજમેળ* 🌾\n`;
+          text += `📅 *તારીખ:* ${dmy}\n`;
+          text += `--------------------------------\n`;
+          text += `📥 *કુલ ખરીદી:* ₹${reportTotalPurchaseAmount.toLocaleString('en-IN')} (${reportTotalWeight.toFixed(2)} કિલો / ${(reportTotalWeight/20).toFixed(1)} મણ)\n`;
+          text += `💵 *રોકડ ચૂકવણી:* ₹${reportTotalCashPaid.toLocaleString('en-IN')}\n`;
+          text += `🏦 *ચેક ચૂકવણી:* ₹${reportTotalChequePaid.toLocaleString('en-IN')}\n`;
+          text += `⏳ *કુલ બાકી રકમ:* ₹${reportTotalBakiAmount.toLocaleString('en-IN')}\n`;
+          text += `--------------------------------\n`;
+
+          const bakiEntries = reportPaymentList.filter(p => p.type === 'baki');
+          if (bakiEntries.length > 0) {
+            text += `\n⚠️ *બાકી પેમેન્ટ યાદી (${bakiEntries.length} પાર્ટી):*\n`;
+            bakiEntries.forEach((item, i) => {
+              text += `${i + 1}. *${item.farmerName}* ${item.villageName ? `(${item.villageName})` : ''} - *₹${item.amount.toLocaleString('en-IN')}*${item.mobileNumber ? ` (મો. ${item.mobileNumber})` : ''}\n`;
+            });
+            text += `--------------------------------\n`;
+          } else {
+            text += `✅ *તમામ પેમેન્ટ પૂર્ણ ચૂકતે થયેલ છે.*\n`;
+          }
+
+          const encoded = encodeURIComponent(text);
+          window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+        };
+
+        return (
+          <div className="animate-fade-in" style={{ padding: 0 }}>
+            {/* CONTROL BAR (HIDDEN ON PRINT) */}
+            <div className="hide-on-print" style={{ marginBottom: "1.25rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                <div>
+                  <h2 style={{ color: "var(--primary)", margin: 0, fontSize: "1.35rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <FileText size={24} /> દૈનિક રોજમેળ (Desinama Report)
+                  </h2>
+                  <p style={{ color: "var(--text-muted)", margin: "2px 0 0 0", fontSize: "0.85rem" }}>
+                    દેશીનામા પદ્ધતિથી ખરીદી અને પેમેન્ટ/બાકીની દિવસ મુજબ વિગતો
+                  </p>
+                </div>
+
+                {/* ACTION BUTTONS: PRINT & WHATSAPP */}
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={handleShareReportWhatsApp}
+                    className="btn btn-outline"
+                    style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.5rem 0.85rem", fontSize: "0.88rem", borderColor: "#059669", color: "#059669" }}
+                    title="WhatsApp પર શેર કરો"
+                  >
+                    <Share2 size={16} /> WhatsApp શેર
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="btn btn-primary"
+                    style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.5rem 0.85rem", fontSize: "0.88rem" }}
+                    title="પ્રિન્ટ કરો"
+                  >
+                    <Printer size={16} /> પ્રિન્ટ રોજમેળ
+                  </button>
+                </div>
+              </div>
+
+              {/* FILTERS ROW */}
+              <div className="glass-panel" style={{ padding: "0.85rem 1rem", borderRadius: "12px", display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", justifyContent: "space-between" }}>
+                {/* DATE SELECTOR */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.85rem", fontWeight: "700", color: "var(--text-muted)" }}>તારીખ:</span>
+                  <input
+                    type="date"
+                    className="form-input filter-date"
+                    value={reportDate}
+                    onChange={(e) => setReportDate(e.target.value)}
+                    style={{ padding: "0.45rem 0.6rem", fontSize: "0.9rem", width: "auto" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date();
+                      setReportDate(today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0'));
+                    }}
+                    className="btn btn-outline"
+                    style={{ padding: "0.4rem 0.65rem", fontSize: "0.8rem" }}
+                  >
+                    આજે
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const yest = new Date();
+                      yest.setDate(yest.getDate() - 1);
+                      setReportDate(yest.getFullYear() + '-' + String(yest.getMonth() + 1).padStart(2, '0') + '-' + String(yest.getDate()).padStart(2, '0'));
+                    }}
+                    className="btn btn-outline"
+                    style={{ padding: "0.4rem 0.65rem", fontSize: "0.8rem" }}
+                  >
+                    ગઈકાલે
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReportDate("")}
+                    className="btn btn-outline"
+                    style={{ padding: "0.4rem 0.65rem", fontSize: "0.8rem" }}
+                  >
+                    બધા દિવસો
+                  </button>
+                </div>
+
+                {/* TYPE & PAYMENT FILTERS */}
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <select
+                    value={reportTypeFilter}
+                    onChange={(e) => setReportTypeFilter(e.target.value)}
+                    className="form-input"
+                    style={{ padding: "0.45rem 0.6rem", fontSize: "0.88rem", width: "auto" }}
+                  >
+                    <option value="all">બધા પ્રકાર (APMC + Direct)</option>
+                    <option value="APMC">🏢 ફક્ત APMC</option>
+                    <option value="Direct">🚜 ફક્ત Direct</option>
+                  </select>
+
+                  <select
+                    value={reportPaymentFilter}
+                    onChange={(e) => setReportPaymentFilter(e.target.value)}
+                    className="form-input"
+                    style={{ padding: "0.45rem 0.6rem", fontSize: "0.88rem", width: "auto", borderColor: reportPaymentFilter === 'baki' ? 'var(--danger)' : '' }}
+                  >
+                    <option value="all">તમામ પેમેન્ટ સ્થિતિ</option>
+                    <option value="baki">⏳ ફક્ત પેમેન્ટ બાકી વાળા</option>
+                    <option value="paid">✅ ફક્ત પૂર્ણ ચૂકવાયેલ</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => fetchRecentEntries(false)}
+                    className="btn btn-outline"
+                    style={{ padding: "0.45rem 0.75rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.3rem" }}
+                    title="રિફ્રેશ કરો"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* KPI SUMMARY CARDS */}
+            <div className="grid-responsive-3 hide-on-print" style={{ gap: "0.75rem", marginBottom: "1rem" }}>
+              <div className="glass-panel" style={{ padding: "0.85rem 1rem", borderLeft: "4px solid var(--primary)" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase" }}>કુલ ખરીદી (Purchase)</span>
+                <div style={{ fontSize: "1.3rem", fontWeight: "800", color: "var(--primary)", marginTop: "2px" }}>
+                  ₹{reportTotalPurchaseAmount.toLocaleString('en-IN')}
+                </div>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                  {reportDayEntries.length} એન્ટ્રીઓ · {reportTotalWeight.toFixed(2)} KG ({(reportTotalWeight/20).toFixed(1)} મણ)
+                </span>
+              </div>
+
+              <div className="glass-panel" style={{ padding: "0.85rem 1rem", borderLeft: "4px solid var(--success)" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase" }}>ચૂકવાયેલ રકમ (Paid)</span>
+                <div style={{ fontSize: "1.3rem", fontWeight: "800", color: "var(--success)", marginTop: "2px" }}>
+                  ₹{(reportTotalCashPaid + reportTotalChequePaid).toLocaleString('en-IN')}
+                </div>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                  રોકડ: ₹{reportTotalCashPaid.toLocaleString('en-IN')} | ચેક: ₹{reportTotalChequePaid.toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              <div className="glass-panel" style={{ padding: "0.85rem 1rem", borderLeft: "4px solid var(--danger)", background: reportTotalBakiAmount > 0 ? "#fef2f2" : "" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: "700", color: reportTotalBakiAmount > 0 ? "var(--danger)" : "var(--text-muted)", textTransform: "uppercase" }}>બાકી પેમેન્ટ (Due / Baki)</span>
+                <div style={{ fontSize: "1.3rem", fontWeight: "800", color: "var(--danger)", marginTop: "2px" }}>
+                  ₹{reportTotalBakiAmount.toLocaleString('en-IN')}
+                </div>
+                <span style={{ fontSize: "0.8rem", color: reportTotalBakiAmount > 0 ? "var(--danger)" : "var(--text-muted)", fontWeight: reportTotalBakiAmount > 0 ? "600" : "normal" }}>
+                  {reportBakiCount > 0 ? `⚠️ ${reportBakiCount} પાર્ટીના પેમેન્ટ બાકી` : "✅ તમામ પેમેન્ટ પૂર્ણ"}
+                </span>
+              </div>
+            </div>
+
+            {/* DESINAMA CONTAINER */}
+            <div className="desinama-container">
+              {/* DESINAMA HEADER */}
+              <div className="desinama-header">
+                <div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: "800", letterSpacing: "0.5px" }}>
+                    🌾 {voucherSettings.firmName || "દર્શન સીડ્સ ઇન્ડસ્ટ્રીઝ"}
+                  </div>
+                  <div style={{ fontSize: "0.85rem", opacity: 0.9 }}>
+                    દૈનિક રોજમેળ (દેશીનામા વહી) · તારીખ: {reportDate ? reportDate.split('-').reverse().join('/') : 'બધા દિવસો'}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ fontSize: "0.85rem", background: "rgba(255,255,255,0.2)", padding: "4px 10px", borderRadius: "20px", fontWeight: "bold" }}>
+                    કુલ એન્ટ્રીઓ: {reportDayEntries.length}
+                  </span>
+                </div>
+              </div>
+
+              {reportDayEntries.length === 0 ? (
+                <div style={{ padding: "3rem 1.5rem", textAlign: "center", color: "var(--text-muted)" }}>
+                  <p style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>આ તારીખે કોઈ ખરીદી કે પેમેન્ટ એન્ટ્રી મળી નથી.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date();
+                      setReportDate(today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0'));
+                    }}
+                    className="btn btn-primary"
+                    style={{ marginTop: "0.5rem" }}
+                  >
+                    આજની તારીખ જુઓ
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* 2-COLUMN DESINAMA GRID */}
+                  <div className="desinama-grid">
+                    {/* LEFT COLUMN: જમા બાજુ (ખરીદી વિગત / આવક) */}
+                    <div className="desinama-col-jama">
+                      <div className="desinama-col-header" style={{ borderColor: "var(--primary)" }}>
+                        <div>
+                          <span style={{ fontSize: "1.05rem", fontWeight: "800", color: "var(--primary)" }}>
+                            📥 જમા પક્ષ (માલ ખરીદી / આવક)
+                          </span>
+                          <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>ખેડૂતનું નામ, વજન, ભાવ અને કુલ રકમ</div>
+                        </div>
+                        <span style={{ fontSize: "0.85rem", fontWeight: "bold", background: "rgba(46, 125, 50, 0.1)", color: "var(--primary)", padding: "2px 8px", borderRadius: "6px" }}>
+                          {reportPurchaseList.length} લોટ
+                        </span>
+                      </div>
+
+                      {/* PURCHASE ENTRIES LIST */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                        {reportPurchaseList.map((item, idx) => (
+                          <div key={idx} className="desinama-row-card">
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                              <span style={{ fontSize: "0.8rem", fontWeight: "700", color: "var(--primary)" }}>
+                                વાઉચર #{item.voucherId}
+                              </span>
+                              <span style={{ fontSize: "0.75rem", padding: "1px 6px", borderRadius: "4px", background: item.purchaseType === 'APMC' ? '#e0f2fe' : '#fef3c7', color: item.purchaseType === 'APMC' ? '#0369a1' : '#b45309', fontWeight: "bold" }}>
+                                {item.purchaseType === 'APMC' ? '🏢 APMC' : '🚜 Direct'}
+                              </span>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+                              <div>
+                                <div style={{ fontWeight: "700", fontSize: "0.95rem", color: "var(--text-main)" }}>
+                                  શ્રી {item.farmerName} {item.villageName ? <span style={{ fontWeight: "normal", color: "var(--text-muted)", fontSize: "0.85rem" }}>({item.villageName})</span> : ''}
+                                </div>
+                                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                                  જાત: <strong>{item.variety}</strong> · વજન: <strong>{item.finalWeight} kg</strong> ({(item.finalWeight/20).toFixed(1)} મણ) · ભાવ: <strong>₹{item.purchaseRate}</strong>
+                                </div>
+                              </div>
+                              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                <div style={{ fontSize: "1.05rem", fontWeight: "800", color: "var(--primary)" }}>
+                                  ₹{item.finalAmount.toLocaleString('en-IN')}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* LEFT COLUMN FOOTER */}
+                      <div className="desinama-col-footer">
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem", marginBottom: "0.3rem" }}>
+                          <span style={{ color: "var(--text-muted)" }}>કુલ અસરકારક વજન:</span>
+                          <strong>{reportTotalWeight.toFixed(2)} KG ({(reportTotalWeight/20).toFixed(1)} મણ)</strong>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.05rem", fontWeight: "800", color: "var(--primary)", borderTop: "1px solid #e2e8f0", paddingTop: "0.4rem" }}>
+                          <span>કુલ ખરીદી રકમ:</span>
+                          <span>₹{reportTotalPurchaseAmount.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: ઉધાર બાજુ (ચૂકવણી & બાકી વિગત / જાવક) */}
+                    <div className="desinama-col-udhar">
+                      <div className="desinama-col-header" style={{ borderColor: "#2563eb" }}>
+                        <div>
+                          <span style={{ fontSize: "1.05rem", fontWeight: "800", color: "#1e40af" }}>
+                            📤 ઉધાર પક્ષ (ચૂકવણી અને બાકી વિગત)
+                          </span>
+                          <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>રોકડ, ચેક અને બાકી પાર્ટીના નામ સાથે</div>
+                        </div>
+                        <span style={{ fontSize: "0.85rem", fontWeight: "bold", background: "#dbeafe", color: "#1e40af", padding: "2px 8px", borderRadius: "6px" }}>
+                          {reportPaymentList.length} એન્ટ્રીઓ
+                        </span>
+                      </div>
+
+                      {/* PAYMENT & BAKI ENTRIES LIST */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                        {reportPaymentList
+                          .filter(p => {
+                            if (reportPaymentFilter === "baki") return p.type === "baki";
+                            if (reportPaymentFilter === "paid") return p.type === "cash" || p.type === "cheque";
+                            return true;
+                          })
+                          .map((item, idx) => (
+                          <div
+                            key={idx}
+                            className={`desinama-row-card ${item.type === 'baki' ? 'desinama-baki-card' : ''}`}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                              <span style={{ fontSize: "0.78rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.3rem", color: item.type === 'cash' ? '#059669' : (item.type === 'cheque' ? '#2563eb' : '#dc2626') }}>
+                                {item.type === 'cash' && '💵 રોકડ ચૂકવણી'}
+                                {item.type === 'cheque' && `🏦 ચેક ચૂકવણી ${item.chequeNumber ? `(#${item.chequeNumber})` : ''}`}
+                                {item.type === 'baki' && '⏳ પેમેન્ટ બાકી (Payment Due)'}
+                              </span>
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                વાઉચર #{item.voucherId}
+                              </span>
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" }}>
+                              <div>
+                                <div style={{ fontWeight: "700", fontSize: "0.95rem", color: item.type === 'baki' ? '#991b1b' : 'var(--text-main)' }}>
+                                  શ્રી {item.farmerName} {item.villageName ? <span style={{ fontWeight: "normal", color: "var(--text-muted)", fontSize: "0.85rem" }}>({item.villageName})</span> : ''}
+                                </div>
+                                {item.type === 'baki' && item.mobileNumber && (
+                                  <div style={{ fontSize: "0.8rem", color: "#dc2626", marginTop: "2px" }}>
+                                    📞 મો. {item.mobileNumber}
+                                  </div>
+                                )}
+                                {item.type === 'cheque' && item.bankName && (
+                                  <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                                    બેંક: {item.bankName}
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                <div style={{ fontSize: "1.05rem", fontWeight: "800", color: item.type === 'cash' ? '#059669' : (item.type === 'cheque' ? '#2563eb' : '#dc2626') }}>
+                                  ₹{item.amount.toLocaleString('en-IN')}
+                                </div>
+                                {item.type === 'baki' && role === 'admin' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openApprovalModal(item.rawEntry)}
+                                    className="btn btn-outline hide-on-print"
+                                    style={{ padding: "2px 8px", fontSize: "0.72rem", borderColor: "#dc2626", color: "#dc2626", marginTop: "4px" }}
+                                  >
+                                    ચૂકવો / અપ્રુવ
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* RIGHT COLUMN FOOTER */}
+                      <div className="desinama-col-footer">
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "0.2rem", color: "#059669" }}>
+                          <span>💵 કુલ રોકડ ચૂકવણી:</span>
+                          <strong>₹{reportTotalCashPaid.toLocaleString('en-IN')}</strong>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "0.2rem", color: "#2563eb" }}>
+                          <span>🏦 કુલ ચેક ચૂકવણી:</span>
+                          <strong>₹{reportTotalChequePaid.toLocaleString('en-IN')}</strong>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "0.3rem", color: "#dc2626" }}>
+                          <span>⏳ કુલ બાકી રકમ ({reportBakiCount} પાર્ટી):</span>
+                          <strong>₹{reportTotalBakiAmount.toLocaleString('en-IN')}</strong>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.05rem", fontWeight: "800", color: "var(--text-main)", borderTop: "1px solid #e2e8f0", paddingTop: "0.4rem" }}>
+                          <span>કુલ સરવાળો (ચૂકવણી + બાકી):</span>
+                          <span>₹{(reportTotalCashPaid + reportTotalChequePaid + reportTotalBakiAmount).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BOTTOM TALO (દેશીનામા મેળ / RECONCILIATION) */}
+                  <div className="desinama-talo-bar">
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                      <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "#dcfce7", color: "#15803d", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", fontSize: "1.2rem" }}>
+                        ✓
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: "800", color: "#166534", fontSize: "1rem" }}>
+                          દેશીનામા મેળ: બંને બાજુ સરભર છે (Tally Matched)
+                        </div>
+                        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                          જમા (ખરીદી): ₹{reportTotalPurchaseAmount.toLocaleString('en-IN')} = ઉધાર (રોકડ + ચેક + બાકી): ₹{(reportTotalCashPaid + reportTotalChequePaid + reportTotalBakiAmount).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                      {reportTotalBakiAmount > 0 ? (
+                        <div style={{ padding: "4px 12px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "20px", color: "#dc2626", fontWeight: "bold", fontSize: "0.88rem" }}>
+                          ⚠️ {reportBakiCount} પાર્ટીનું પેમેન્ટ બાકી છે
+                        </div>
+                      ) : (
+                        <div style={{ padding: "4px 12px", background: "#dcfce7", border: "1px solid #86efac", borderRadius: "20px", color: "#166534", fontWeight: "bold", fontSize: "0.88rem" }}>
+                          ✅ આજનું તમામ પેમેન્ટ પૂરું
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ADMIN: SETTINGS */}
       {role === "admin" && activeTab === "settings" && (
