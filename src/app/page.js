@@ -321,12 +321,27 @@ export default function Home() {
 
   useEffect(() => {
     setPaymentData(prev => {
-      if (prev.cashAmount !== "") {
+      // If user explicitly chose "પેમેન્ટ બાકી" (both cash and cheque are "0"), keep them 0
+      if (prev.cashAmount === "0" && prev.chequeAmount === "0") {
+        return prev;
+      }
+      // If full cash mode
+      if (parseFloat(prev.cashAmount) > 0 && (parseFloat(prev.chequeAmount) || 0) === 0) {
+        return { ...prev, cashAmount: finalAmount.toString(), chequeAmount: "0" };
+      }
+      // If partial cash mode
+      if (prev.cashAmount !== "" && parseFloat(prev.cashAmount) > 0 && parseFloat(prev.cashAmount) < finalAmount) {
         const cash = parseFloat(prev.cashAmount) || 0;
-        const expectedCheque = Math.max(0, finalAmount - cash).toString();
-        if (prev.chequeAmount !== expectedCheque) {
-          return { ...prev, chequeAmount: expectedCheque };
-        }
+        return { ...prev, chequeAmount: Math.max(0, finalAmount - cash).toString() };
+      }
+      // If partial cheque mode
+      if (prev.chequeAmount !== "" && parseFloat(prev.chequeAmount) > 0 && parseFloat(prev.chequeAmount) < finalAmount) {
+        const cheque = parseFloat(prev.chequeAmount) || 0;
+        return { ...prev, cashAmount: Math.max(0, finalAmount - cheque).toString() };
+      }
+      // Default to full cheque if finalAmount > 0 and not explicitly baki
+      if (finalAmount > 0) {
+        return { ...prev, chequeAmount: finalAmount.toString(), cashAmount: "0" };
       }
       return prev;
     });
@@ -363,9 +378,15 @@ export default function Home() {
     setPaymentData((prev) => {
       const newData = { ...prev, [name]: value };
       if (name === "cashAmount") {
-        const cash = parseFloat(value) || 0;
-        // Auto calculate cheque amount if value is entered (even 0)
-        newData.chequeAmount = (value !== "" && cash >= 0) ? Math.max(0, finalAmount - cash).toString() : "";
+        if (value !== "") {
+          const cash = parseFloat(value) || 0;
+          newData.chequeAmount = Math.max(0, finalAmount - cash).toString();
+        }
+      } else if (name === "chequeAmount") {
+        if (value !== "") {
+          const cheque = parseFloat(value) || 0;
+          newData.cashAmount = Math.max(0, finalAmount - cheque).toString();
+        }
       }
       return newData;
     });
@@ -460,6 +481,10 @@ export default function Home() {
       const currentDailyNum = maxDailyNum + 1;
       const dailyPurchaseId = `PUR-${todayString}-${currentDailyNum.toString().padStart(3, '0')}`;
 
+      const cashVal = parseFloat(paymentData.cashAmount) || 0;
+      const chequeVal = parseFloat(paymentData.chequeAmount) || 0;
+      const isPaid = (cashVal + chequeVal) >= finalAmount;
+
       const payload = {
         ...formData,
         voucherId: currentVoucher.toString(),
@@ -470,9 +495,9 @@ export default function Home() {
         totalDeduction: totalDeduction.toFixed(2),
         finalWeight: finalWeight.toFixed(2),
         finalAmount,
-        status: role === "admin" ? "Completed" : "Pending", // Helper entries are pending, admin entries are completed
-        cashAmount: role === "admin" ? (paymentData.cashAmount === "" && paymentData.chequeAmount === "" ? "0" : (paymentData.cashAmount !== "" ? paymentData.cashAmount : Math.max(0, finalAmount - (parseFloat(paymentData.chequeAmount)||0)).toString())) : "",
-        chequeAmount: role === "admin" ? (paymentData.cashAmount === "" && paymentData.chequeAmount === "" ? finalAmount.toString() : (paymentData.cashAmount !== "" ? Math.max(0, finalAmount - (parseFloat(paymentData.cashAmount)||0)).toString() : paymentData.chequeAmount)) : "",
+        status: (role === "admin" && isPaid) ? "Completed" : "Pending",
+        cashAmount: role === "admin" ? (paymentData.cashAmount !== "" ? paymentData.cashAmount : "0") : "",
+        chequeAmount: role === "admin" ? (paymentData.chequeAmount !== "" ? paymentData.chequeAmount : "0") : "",
         chequeNumber: role === "admin" ? paymentData.chequeNumber : "",
         mobileNumber: formData.mobileNumber,
         bankName: role === "admin" ? (voucherSettings.bankName || "") : "",
@@ -531,6 +556,10 @@ export default function Home() {
     try {
       const actualVariety = formData.variety === "Other" ? formData.customVariety : formData.variety;
 
+      const cashVal = parseFloat(paymentData.cashAmount) || 0;
+      const chequeVal = parseFloat(paymentData.chequeAmount) || 0;
+      const isPaid = (cashVal + chequeVal) >= finalAmount;
+
       const payload = {
         id: editingEntry.id,
         rowIndex: editingEntry.rowIndex,
@@ -548,10 +577,10 @@ export default function Home() {
         finalWeight: finalWeight.toFixed(2),
         purchaseRate,
         finalAmount,
-        status: "Completed",
-        cashAmount: paymentData.cashAmount === "" && paymentData.chequeAmount === "" ? "0" : (paymentData.cashAmount !== "" ? paymentData.cashAmount : Math.max(0, finalAmount - (parseFloat(paymentData.chequeAmount)||0)).toString()),
-        chequeAmount: paymentData.cashAmount === "" && paymentData.chequeAmount === "" ? finalAmount.toString() : (paymentData.cashAmount !== "" ? Math.max(0, finalAmount - (parseFloat(paymentData.cashAmount)||0)).toString() : paymentData.chequeAmount),
-        chequeNumber: paymentData.chequeNumber,
+        status: isPaid ? "Completed" : "Pending",
+        cashAmount: paymentData.cashAmount !== "" ? paymentData.cashAmount : "0",
+        chequeAmount: paymentData.chequeAmount !== "" ? paymentData.chequeAmount : "0",
+        chequeNumber: paymentData.chequeNumber || "",
         bankName: voucherSettings.bankName || "",
         mobileNumber: formData.mobileNumber,
         itemsJSON: JSON.stringify(formData.items)
@@ -959,16 +988,13 @@ export default function Home() {
             </div>
 
             {/* PURCHASE TYPE */}
-            <div style={{ marginBottom: "1rem" }}>
-              <label style={{ fontSize: "0.85rem", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "1px", display: "block", marginBottom: "1rem" }}>Purchase Type</label>
+            <div style={{ marginBottom: "0.75rem" }}>
               <div className="purchase-type-cards">
                 <div className={`purchase-type-card ${formData.purchaseType === "APMC" ? "active" : ""}`} onClick={() => handleInputChange({ target: { name: 'purchaseType', value: 'APMC' } })}>
-                  <span className="icon">🏢</span>
-                  <span className="title">APMC (Market Yard)</span>
+                  <span className="title">🏢 APMC</span>
                 </div>
                 <div className={`purchase-type-card ${formData.purchaseType === "Direct" ? "active" : ""}`} onClick={() => handleInputChange({ target: { name: 'purchaseType', value: 'Direct' } })}>
-                  <span className="icon">🚜</span>
-                  <span className="title">Direct (From Farmer)</span>
+                  <span className="title">🚜 Direct</span>
                 </div>
               </div>
             </div>
@@ -1053,27 +1079,95 @@ export default function Home() {
 
             {role === "admin" && (
               <>
-                <h3 style={{ borderBottom: "1px solid var(--surface-border)", paddingBottom: "0.5rem", marginTop: "1.5rem", marginBottom: "1rem", color: "var(--text-main)" }}>પેમેન્ટ વિગતો</h3>
+                <h3 style={{ borderBottom: "1px solid var(--surface-border)", paddingBottom: "0.5rem", marginTop: "1.5rem", marginBottom: "0.75rem", color: "var(--text-main)" }}>પેમેન્ટ વિગતો</h3>
+                
+                {/* 3 QUICK PAYMENT OPTIONS */}
+                <div className="payment-quick-options">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentData({
+                        cashAmount: finalAmount.toString(),
+                        chequeAmount: "0",
+                        chequeNumber: ""
+                      });
+                    }}
+                    className={`payment-quick-btn ${((parseFloat(paymentData.cashAmount) || 0) > 0 && (parseFloat(paymentData.chequeAmount) || 0) === 0) ? "active-cash" : ""}`}
+                  >
+                    💵 પૂરા રોકડ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentData({
+                        cashAmount: "0",
+                        chequeAmount: finalAmount.toString(),
+                        chequeNumber: paymentData.chequeNumber || ""
+                      });
+                    }}
+                    className={`payment-quick-btn ${((parseFloat(paymentData.chequeAmount) || 0) > 0 && (parseFloat(paymentData.cashAmount) || 0) === 0) ? "active-cheque" : ""}`}
+                  >
+                    🏦 પૂરો ચેક
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentData({
+                        cashAmount: "0",
+                        chequeAmount: "0",
+                        chequeNumber: ""
+                      });
+                    }}
+                    className={`payment-quick-btn ${(paymentData.cashAmount === "0" && paymentData.chequeAmount === "0") ? "active-baki" : "baki-outline"}`}
+                  >
+                    ⏳ પેમેન્ટ બાકી
+                  </button>
+                </div>
+
                 <div className="payment-section-grid">
                   <div className="payment-box">
                     <div className="payment-box-title">💵 રોકડ (CASH)</div>
-                    <input type="number" className="form-input" name="cashAmount" value={paymentData.cashAmount} onChange={handlePaymentChange} placeholder="રકમ (₹)" style={{ fontSize: "1.2rem", padding: "1rem", background: "rgba(16, 185, 129, 0.05)", fontWeight: "bold" }} />
+                    <input type="number" className="form-input" name="cashAmount" value={paymentData.cashAmount} onChange={handlePaymentChange} placeholder="રકમ (₹)" style={{ fontSize: "1.2rem", padding: "0.85rem", background: "rgba(16, 185, 129, 0.05)", fontWeight: "bold" }} />
                   </div>
 
                   <div className="payment-box">
                     <div className="payment-box-title">🏦 ચેક (CHEQUE)</div>
-                    <input type="number" className="form-input" name="chequeAmount" value={paymentData.chequeAmount} onChange={handlePaymentChange} placeholder="રકમ (₹)" style={{ fontSize: "1.2rem", padding: "1rem", marginBottom: "1rem", background: "rgba(16, 185, 129, 0.05)", fontWeight: "bold" }} />
+                    <input type="number" className="form-input" name="chequeAmount" value={paymentData.chequeAmount} onChange={handlePaymentChange} placeholder="રકમ (₹)" style={{ fontSize: "1.2rem", padding: "0.85rem", marginBottom: "0.75rem", background: "rgba(16, 185, 129, 0.05)", fontWeight: "bold" }} />
                     <div className="grid-responsive-2" style={{ gap: "0.5rem" }}>
                       <input type="text" className="form-input" disabled value={voucherSettings.bankName || 'Bank name'} style={{ background: "rgba(0,0,0,0.02)", color: "var(--text-muted)" }} />
                       <input type="tel" inputMode="numeric" pattern="[0-9]*" className="form-input" name="chequeNumber" value={paymentData.chequeNumber} onChange={handlePaymentChange} placeholder="Cheque #" />
                     </div>
                   </div>
                 </div>
+
+                {/* LIVE PAYMENT STATUS BANNER */}
+                {(() => {
+                  const cashVal = parseFloat(paymentData.cashAmount) || 0;
+                  const chequeVal = parseFloat(paymentData.chequeAmount) || 0;
+                  const paidTotal = cashVal + chequeVal;
+                  const bakiAmt = finalAmount - paidTotal;
+
+                  if (bakiAmt > 0) {
+                    return (
+                      <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.85rem", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.95rem" }}>
+                        <span style={{ color: "#dc2626", fontWeight: "600" }}>⏳ પેમેન્ટ બાકી (Payment Due):</span>
+                        <strong style={{ color: "#dc2626", fontSize: "1.1rem" }}>₹{bakiAmt.toLocaleString('en-IN')}</strong>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.85rem", background: "#ecfdf5", border: "1px solid #6ee7b7", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.95rem" }}>
+                        <span style={{ color: "#059669", fontWeight: "600" }}>✅ પૂર્ણ ચૂકવાયેલ (Full Paid):</span>
+                        <strong style={{ color: "#059669", fontSize: "1.1rem" }}>₹{paidTotal.toLocaleString('en-IN')}</strong>
+                      </div>
+                    );
+                  }
+                })()}
               </>
             )}
 
-            <button type="submit" className="btn btn-primary" style={{ width: "100%", marginTop: "2rem", padding: "1rem", fontSize: "1.1rem", borderRadius: "50px" }} disabled={isProcessing}>
-              {isProcessing ? "પ્રોસેસિંગ..." : (role === "admin" ? "સેવ કરો (Save)" : "સેવ કરો (Save)")}
+            <button type="submit" className="btn btn-primary" style={{ width: "100%", marginTop: "1.5rem", padding: "1rem", fontSize: "1.1rem", borderRadius: "50px" }} disabled={isProcessing}>
+              {isProcessing ? "પ્રોસેસિંગ..." : (role === "admin" ? (((parseFloat(paymentData.cashAmount)||0) + (parseFloat(paymentData.chequeAmount)||0) >= finalAmount) ? "સેવ કરો (Save & Final)" : "સેવ કરો (પેમેન્ટ બાકી)") : "સેવ કરો (Save)")}
             </button>
           </form>
         </div>
@@ -1409,7 +1503,51 @@ export default function Home() {
               </div>
 
               {/* PAYMENT SECTION */}
-              <h3 style={{ borderBottom: "1px solid var(--surface-border)", paddingBottom: "0.5rem", marginBottom: "1rem", color: "var(--text-main)" }}>પેમેન્ટ વિગતો</h3>
+              <h3 style={{ borderBottom: "1px solid var(--surface-border)", paddingBottom: "0.5rem", marginBottom: "0.75rem", color: "var(--text-main)" }}>પેમેન્ટ વિગતો</h3>
+              
+              {/* 3 QUICK PAYMENT OPTIONS */}
+              <div className="payment-quick-options">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentData({
+                      cashAmount: finalAmount.toString(),
+                      chequeAmount: "0",
+                      chequeNumber: ""
+                    });
+                  }}
+                  className={`payment-quick-btn ${((parseFloat(paymentData.cashAmount) || 0) > 0 && (parseFloat(paymentData.chequeAmount) || 0) === 0) ? "active-cash" : ""}`}
+                >
+                  💵 પૂરા રોકડ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentData({
+                      cashAmount: "0",
+                      chequeAmount: finalAmount.toString(),
+                      chequeNumber: paymentData.chequeNumber || ""
+                    });
+                  }}
+                  className={`payment-quick-btn ${((parseFloat(paymentData.chequeAmount) || 0) > 0 && (parseFloat(paymentData.cashAmount) || 0) === 0) ? "active-cheque" : ""}`}
+                >
+                  🏦 પૂરો ચેક
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentData({
+                      cashAmount: "0",
+                      chequeAmount: "0",
+                      chequeNumber: ""
+                    });
+                  }}
+                  className={`payment-quick-btn ${(paymentData.cashAmount === "0" && paymentData.chequeAmount === "0") ? "active-baki" : "baki-outline"}`}
+                >
+                  ⏳ પેમેન્ટ બાકી
+                </button>
+              </div>
+
               <div className="grid-equal-2">
                 <div className="form-group">
                   <label className="form-label">રોકડ (Cash)</label>
@@ -1425,8 +1563,36 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* LIVE PAYMENT STATUS BANNER */}
+              {(() => {
+                const cashVal = parseFloat(paymentData.cashAmount) || 0;
+                const chequeVal = parseFloat(paymentData.chequeAmount) || 0;
+                const paidTotal = cashVal + chequeVal;
+                const bakiAmt = finalAmount - paidTotal;
+
+                if (bakiAmt > 0) {
+                  return (
+                    <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.85rem", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.95rem" }}>
+                      <span style={{ color: "#dc2626", fontWeight: "600" }}>⏳ પેમેન્ટ બાકી (Payment Due):</span>
+                      <strong style={{ color: "#dc2626", fontSize: "1.1rem" }}>₹{bakiAmt.toLocaleString('en-IN')}</strong>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div style={{ marginTop: "0.75rem", padding: "0.6rem 0.85rem", background: "#ecfdf5", border: "1px solid #6ee7b7", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.95rem" }}>
+                      <span style={{ color: "#059669", fontWeight: "600" }}>✅ પૂર્ણ ચૂકવાયેલ (Full Paid):</span>
+                      <strong style={{ color: "#059669", fontSize: "1.1rem" }}>₹{paidTotal.toLocaleString('en-IN')}</strong>
+                    </div>
+                  );
+                }
+              })()}
+
               <button type="submit" className="btn btn-success" style={{ width: "100%", marginTop: "1.5rem" }} disabled={isProcessing}>
-                {isProcessing ? "પ્રોસેસિંગ..." : (editingEntry.status === "Completed" ? "ફેરફારો સેવ કરો (Save Changes)" : "પેમેન્ટ સેવ કરો અને ફાઈનલ કરો")}
+                {isProcessing ? "પ્રોસેસિંગ..." : (
+                  editingEntry.status === "Completed" 
+                    ? "ફેરફારો સેવ કરો (Save Changes)" 
+                    : (((parseFloat(paymentData.cashAmount)||0) + (parseFloat(paymentData.chequeAmount)||0) >= finalAmount) ? "પેમેન્ટ સેવ કરો અને ફાઈનલ કરો" : "સેવ કરો (પેમેન્ટ બાકી રહેશે)")
+                )}
               </button>
             </form>
           </div>
