@@ -250,9 +250,10 @@ export default function Home() {
     try {
       let url = '/api/sheets/read?tab=' + activeTab + '&limit=30';
       if (activeTab === 'dashboard') {
-         const currentYear = new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1;
-         const todayDate = new Date().toISOString().split('T')[0];
-         url = `/api/sheets/read?tab=dashboard&startDate=${currentYear}-04-01&endDate=${todayDate}`;
+         const d = new Date();
+         const currentYear = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+         const nextYear = currentYear + 1;
+         url = `/api/sheets/read?tab=dashboard&startDate=${currentYear}-04-01&endDate=${nextYear}-03-31`;
       } else if (forceAll === true && startDate && endDate) {
         url = `/api/sheets/read?tab=${activeTab}&startDate=${startDate}&endDate=${endDate}`;
       }
@@ -1102,7 +1103,9 @@ export default function Home() {
             let totalWeight = 0;
             
             const today = new Date();
-            const todayStr = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
+            const todayYMD = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            const todayDMY = String(today.getDate()).padStart(2, '0') + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + today.getFullYear();
+            const todayMDY = String(today.getMonth() + 1).padStart(2, '0') + '/' + String(today.getDate()).padStart(2, '0') + '/' + today.getFullYear();
 
             recentEntries.forEach(entry => {
               const finalAmt = Number(entry.finalAmount) || 0;
@@ -1115,7 +1118,15 @@ export default function Home() {
               cashPaid += cashAmt;
               chequePaid += chequeAmt;
 
-              if (normalizeToYMD(entry.date, entry.sheetName) === todayStr || entry.date === todayStr) {
+              const entryNorm = normalizeToYMD(entry.date, entry.sheetName);
+              const isToday = (
+                entryNorm === todayYMD ||
+                entry.date === todayYMD ||
+                entry.date === todayDMY ||
+                entry.date === todayMDY
+              );
+
+              if (isToday) {
                 entriesToday++;
                 todayPurchasesSum += finalAmt;
                 todayCashSum += cashAmt;
