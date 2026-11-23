@@ -1,0 +1,29 @@
+{
+  "name": "purchase-bill",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "migrate": "node scripts/migrate-to-neon.mjs"
+  },
+  "dependencies": {
+    "@google-cloud/vision": "^5.3.6",
+    "@neondatabase/serverless": "^1.2.1",
+    "googleapis": "^171.4.0",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^1.14.0",
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4"
+  }
+}
