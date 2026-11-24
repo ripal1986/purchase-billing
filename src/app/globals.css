@@ -1368,7 +1368,11 @@ input[type="number"] {
 }
 
 @media print {
+  #chopdo-print-area, #chopdo-print-area * {
+    visibility: visible !important;
+  }
   .chopdo-grid {
+    display: grid !important;
     grid-template-columns: 1fr 1fr !important;
   }
   .chopdo-col-jama {

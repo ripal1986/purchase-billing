@@ -1741,6 +1741,79 @@ export default function Home() {
           }
         });
 
+        const totalJamaAmount = reportTotalCashPaid + reportTotalChequePaid + reportTotalBakiAmount;
+        const reportDalo = reportTotalWeight > 0 
+          ? ((reportTotalPurchaseAmount / reportTotalWeight) * 20).toFixed(2) 
+          : "0.00";
+
+        const handlePrintReport = () => {
+          const style = document.createElement('style');
+          style.id = 'report-print-style';
+          style.innerHTML = `
+            @media print {
+              @page { 
+                size: A4 portrait !important; 
+                margin: 6mm !important; 
+              }
+              html, body, .app-container, .main-content {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                height: auto !important;
+                overflow: visible !important;
+              }
+              body * { 
+                visibility: hidden !important; 
+              }
+              #chopdo-print-area, #chopdo-print-area * { 
+                visibility: visible !important; 
+              }
+              #chopdo-print-area {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 100% !important;
+                border: 1.5px solid #000 !important;
+                border-radius: 4px !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+              }
+              .chopdo-grid {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+              }
+              .chopdo-col-jama {
+                border-right: 2px solid #000 !important;
+                border-bottom: none !important;
+                background: transparent !important;
+              }
+              .chopdo-col-udhar {
+                background: transparent !important;
+              }
+              .chopdo-table td, .chopdo-table th {
+                padding: 3px 5px !important;
+                font-size: 11px !important;
+              }
+              .hide-on-print { 
+                display: none !important; 
+              }
+            }
+          `;
+          document.head.appendChild(style);
+          window.print();
+          setTimeout(() => {
+            const el = document.getElementById('report-print-style');
+            if (el) el.remove();
+          }, 1500);
+        };
+
         const handleShareReportWhatsApp = () => {
           const dmy = reportDate ? reportDate.split('-').reverse().join('/') : 'બધા દિવસો';
           let text = `🌾 *${voucherSettings.firmName || "દર્શન સીડ્સ"} - દૈનિક રોજમેળ* 🌾\n`;
@@ -1750,12 +1823,12 @@ export default function Home() {
           text += `🏦 *શ્રી ${primaryBankName} (ચેક):* ₹${reportTotalChequePaid.toLocaleString('en-IN')}\n`;
           text += `💵 *શ્રી રોકડ ખાતે:* ₹${reportTotalCashPaid.toLocaleString('en-IN')}\n`;
           if (reportTotalBakiAmount > 0) {
-            text += `⏳ *શ્રી બાકી પાર્ટી ખાતે:* ₹${reportTotalBakiAmount.toLocaleString('en-IN')}\n`;
+            text += `⏳ *બાકી પેમેન્ટ:* ₹${reportTotalBakiAmount.toLocaleString('en-IN')}\n`;
           }
           text += `*કુલ જમા રકમ:* ₹${totalJamaAmount.toLocaleString('en-IN')}\n`;
           text += `--------------------------------\n`;
           text += `🔴 *ઉધાર પક્ષ:*\n`;
-          text += `🌾 *શ્રી મગફળી ખરીદ ખાતે:* ₹${reportTotalPurchaseAmount.toLocaleString('en-IN')} (${reportTotalWeight.toFixed(2)} કિલો / ${(reportTotalWeight/20).toFixed(1)} મણ)\n`;
+          text += `🌾 *શ્રી મગફળી ખરીદ ખાતે:* ₹${reportTotalPurchaseAmount.toLocaleString('en-IN')} (${reportTotalWeight.toFixed(2)} કિલો / ${(reportTotalWeight/20).toFixed(1)} મણ) | *દળો:* ₹${reportDalo}/૨૦kg\n`;
           text += `--------------------------------\n`;
           text += `⚖️ *મેળ:* સરભર છે (₹${totalJamaAmount.toLocaleString('en-IN')})\n`;
           text += `--------------------------------\n`;
@@ -1763,7 +1836,7 @@ export default function Home() {
           if (bakiList.length > 0) {
             text += `\n⚠️ *બાકી પેમેન્ટ યાદી (${bakiList.length} પાર્ટી):*\n`;
             bakiList.forEach((item, i) => {
-              text += `${i + 1}. *${item.farmerName}* ${item.villageName ? `(${item.villageName})` : ''} - *₹${item.amount.toLocaleString('en-IN')}* (બિલ #${item.voucherId}${item.mobileNumber ? `, મો. ${item.mobileNumber}` : ''})\n`;
+              text += `${i + 1}. *શ્રી ${item.farmerName} ખાતે જમા* ${item.villageName ? `(${item.villageName})` : ''} - *₹${item.amount.toLocaleString('en-IN')}* (બિલ #${item.voucherId}${item.mobileNumber ? `, મો. ${item.mobileNumber}` : ''})\n`;
             });
             text += `--------------------------------\n`;
           }
@@ -1771,8 +1844,6 @@ export default function Home() {
           const encoded = encodeURIComponent(text);
           window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
         };
-
-        const totalJamaAmount = reportTotalCashPaid + reportTotalChequePaid + reportTotalBakiAmount;
 
         return (
           <div className="animate-fade-in" style={{ padding: 0 }}>
@@ -1802,7 +1873,7 @@ export default function Home() {
 
                   <button
                     type="button"
-                    onClick={() => window.print()}
+                    onClick={handlePrintReport}
                     className="btn btn-primary"
                     style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.45rem 0.8rem", fontSize: "0.85rem" }}
                     title="પ્રિન્ટ કરો"
@@ -1896,7 +1967,7 @@ export default function Home() {
             </div>
 
             {/* CHOPDO CONTAINER */}
-            <div className="chopdo-container">
+            <div className="chopdo-container" id="chopdo-print-area">
               {/* CHOPDO HEADER */}
               <div className="chopdo-header">
                 <div>
@@ -2031,65 +2102,55 @@ export default function Home() {
                         </div>
                       )}
 
-                      {/* 3. BAKI ENTRIES (ONLY UNPAID PARTIES) */}
-                      {(reportPaymentFilter === 'all' || reportPaymentFilter === 'baki') && (
-                        <div>
-                          <div style={{ background: "#fef2f2", padding: "0.35rem 0.75rem", fontSize: "0.85rem", fontWeight: "700", color: "#dc2626", borderBottom: "1px solid #fecaca", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between" }}>
-                            <span>⏳ શ્રી બાકી પાર્ટી ખાતે (પેમેન્ટ બાકી)</span>
-                            <span>₹{reportTotalBakiAmount.toLocaleString('en-IN')} ({bakiList.length})</span>
-                          </div>
-
-                          {bakiList.length === 0 ? (
-                            <div style={{ padding: "0.4rem 0.75rem", fontSize: "0.82rem", color: "#166534", background: "#f0fdf4" }}>
-                              ✅ કોઈ બાકી નથી (તમામ પેમેન્ટ પૂર્ણ ચૂકતે).
-                            </div>
-                          ) : (
-                            <table className="chopdo-table">
-                              <thead>
-                                <tr>
-                                  <th style={{ width: "38%" }}>બાકી રકમ (₹)</th>
-                                  <th style={{ width: "44%" }}>પાર્ટીનું નામ</th>
-                                  <th style={{ width: "18%", textAlign: "right" }}>બિલ</th>
+                      {/* 3. BAKI ENTRIES: ONLY IF UNPAID PARTIES EXIST */}
+                      {bakiList.length > 0 && (reportPaymentFilter === 'all' || reportPaymentFilter === 'baki') && (
+                        <div style={{ borderTop: "1px solid #cbd5e1" }}>
+                          <table className="chopdo-table">
+                            <tbody>
+                              {bakiList.map((item, idx) => (
+                                <tr key={idx} style={{ background: "#fff5f5" }}>
+                                  <td style={{ width: "42%", fontWeight: "800", color: "#dc2626" }}>
+                                    ₹{item.amount.toLocaleString('en-IN')}
+                                  </td>
+                                  <td style={{ width: "38%", fontWeight: "700", color: "#991b1b" }}>
+                                    શ્રી {item.farmerName} ખાતે જમા
+                                    {item.villageName && <span style={{ fontWeight: "normal", fontSize: "0.75rem", color: "#7f1d1d" }}> ({item.villageName})</span>}
+                                  </td>
+                                  <td style={{ width: "20%", textAlign: "right" }}>
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px" }}>
+                                      <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>#{item.voucherId}</span>
+                                      {role === 'admin' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => openApprovalModal(item.rawEntry)}
+                                          className="btn btn-outline hide-on-print"
+                                          style={{ padding: "1px 5px", fontSize: "0.68rem", borderColor: "#dc2626", color: "#dc2626" }}
+                                          title="પેમેન્ટ કરો"
+                                        >
+                                          ચૂકવો
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
                                 </tr>
-                              </thead>
-                              <tbody>
-                                {bakiList.map((item, idx) => (
-                                  <tr key={idx} style={{ background: "#fff5f5" }}>
-                                    <td style={{ fontWeight: "800", color: "#dc2626" }}>
-                                      ₹{item.amount.toLocaleString('en-IN')}
-                                    </td>
-                                    <td style={{ fontWeight: "700", color: "#991b1b" }}>
-                                      {item.farmerName}
-                                      {item.villageName && <span style={{ fontWeight: "normal", fontSize: "0.78rem", color: "#7f1d1d" }}> ({item.villageName})</span>}
-                                    </td>
-                                    <td style={{ textAlign: "right" }}>
-                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px" }}>
-                                        <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>#{item.voucherId}</span>
-                                        {role === 'admin' && (
-                                          <button
-                                            type="button"
-                                            onClick={() => openApprovalModal(item.rawEntry)}
-                                            className="btn btn-outline hide-on-print"
-                                            style={{ padding: "1px 5px", fontSize: "0.68rem", borderColor: "#dc2626", color: "#dc2626" }}
-                                            title="પેમેન્ટ કરો"
-                                          >
-                                            ચૂકવો
-                                          </button>
-                                        )}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      {bakiList.length === 0 && reportPaymentFilter === 'baki' && (
+                        <div style={{ padding: "1rem", textAlign: "center", color: "#166534", background: "#f0fdf4" }}>
+                          ✅ કોઈ બાકી નથી (તમામ પેમેન્ટ પૂર્ણ ચૂકતે).
                         </div>
                       )}
 
                       {/* LEFT COLUMN FOOTER */}
                       <div className="chopdo-col-footer">
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "2px" }}>
-                          <span>ચેક: ₹{reportTotalChequePaid.toLocaleString('en-IN')} | રોકડ: ₹{reportTotalCashPaid.toLocaleString('en-IN')} | બાકી: ₹{reportTotalBakiAmount.toLocaleString('en-IN')}</span>
+                          <span>
+                            ચેક: ₹{reportTotalChequePaid.toLocaleString('en-IN')} | રોકડ: ₹{reportTotalCashPaid.toLocaleString('en-IN')}
+                            {reportTotalBakiAmount > 0 ? ` | બાકી: ₹${reportTotalBakiAmount.toLocaleString('en-IN')}` : ''}
+                          </span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.05rem", fontWeight: "800", color: "#166534", borderTop: "1px solid #cbd5e1", paddingTop: "4px" }}>
                           <span>કુલ જમા રકમ:</span>
@@ -2138,11 +2199,13 @@ export default function Home() {
 
                       {/* RIGHT COLUMN FOOTER */}
                       <div className="chopdo-col-footer">
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.88rem", marginBottom: "2px" }}>
-                          <span style={{ color: "var(--text-muted)" }}>કુલ મગફળી વજન:</span>
-                          <strong style={{ color: "#15803d" }}>
-                            {reportTotalWeight.toFixed(2)} KG ({(reportTotalWeight/20).toFixed(1)} મણ)
-                          </strong>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.88rem", marginBottom: "4px", flexWrap: "wrap", gap: "4px" }}>
+                          <span style={{ color: "var(--text-muted)" }}>
+                            કુલ મગફળી વજન: <strong style={{ color: "#15803d" }}>{reportTotalWeight.toFixed(2)} KG ({(reportTotalWeight/20).toFixed(1)} મણ)</strong>
+                          </span>
+                          <span style={{ background: "#fef3c7", color: "#b45309", padding: "1px 8px", borderRadius: "4px", fontWeight: "800", fontSize: "0.85rem", border: "1px solid #fde68a" }}>
+                            દળો: ₹{reportDalo}/૨૦kg
+                          </span>
                         </div>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.05rem", fontWeight: "800", color: "#b91c1c", borderTop: "1px solid #cbd5e1", paddingTop: "4px" }}>
                           <span>કુલ ઉધાર રકમ (મગફળી ખરીદી):</span>
@@ -2163,7 +2226,10 @@ export default function Home() {
                       </span>
                     </div>
 
-                    <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span style={{ background: "#fef3c7", color: "#b45309", padding: "2px 8px", borderRadius: "8px", fontWeight: "800", fontSize: "0.82rem", border: "1px solid #fde68a" }}>
+                        સરેરાશ દળો: ₹{reportDalo}/૨૦kg
+                      </span>
                       {reportTotalBakiAmount > 0 ? (
                         <span style={{ padding: "2px 8px", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "12px", color: "#dc2626", fontWeight: "bold", fontSize: "0.8rem" }}>
                           ⚠️ {bakiList.length} પાર્ટીનું પેમેન્ટ બાકી (₹{reportTotalBakiAmount.toLocaleString('en-IN')})
