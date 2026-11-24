@@ -48,6 +48,7 @@ export async function initDb() {
         cash_amount NUMERIC(12, 2) DEFAULT 0,
         cheque_amount NUMERIC(12, 2) DEFAULT 0,
         cheque_number VARCHAR(100),
+        cheque_date VARCHAR(50),
         bank_name VARCHAR(255),
         items_json TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -59,6 +60,11 @@ export async function initDb() {
     await sql`CREATE INDEX IF NOT EXISTS idx_purchases_type ON purchases(purchase_type);`;
     await sql`CREATE INDEX IF NOT EXISTS idx_purchases_daily_id ON purchases(daily_purchase_id);`;
     await sql`CREATE INDEX IF NOT EXISTS idx_purchases_voucher_id ON purchases(voucher_id);`;
+    try {
+      await sql`ALTER TABLE purchases ADD COLUMN IF NOT EXISTS cheque_date VARCHAR(50);`;
+    } catch (e) {
+      // Column might already exist or table created with it
+    }
 
     dbInitialized = true;
     return true;
@@ -90,6 +96,7 @@ export function formatDbRow(row) {
     cashAmount: row.cash_amount !== null && row.cash_amount !== undefined ? String(row.cash_amount) : '',
     chequeAmount: row.cheque_amount !== null && row.cheque_amount !== undefined ? String(row.cheque_amount) : '',
     chequeNumber: row.cheque_number || '',
+    chequeDate: row.cheque_date || '',
     mobileNumber: row.mobile_number || '',
     bankName: row.bank_name || '',
     itemsJSON: row.items_json || '[]',

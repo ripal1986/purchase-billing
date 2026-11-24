@@ -115,12 +115,12 @@ export async function POST(req) {
           voucher_id, purchase_type, date, daily_purchase_id, farmer_name,
           village_name, mobile_number, variety, net_weight, deduction_grams,
           total_deduction, final_weight, purchase_rate, final_amount, status,
-          cash_amount, cheque_amount, cheque_number, bank_name, items_json
+          cash_amount, cheque_amount, cheque_number, cheque_date, bank_name, items_json
         ) VALUES (
           ${r.voucherId}, ${r.purchaseType}, ${r.date}, ${String(r.dailyPurchaseId)}, ${r.farmerName},
           ${r.villageName}, ${r.mobileNumber}, ${r.variety}, ${r.netWeight}, ${r.deductionGrams},
           ${r.totalDeduction}, ${r.finalWeight}, ${r.purchaseRate}, ${r.finalAmount}, ${r.status},
-          ${r.cashAmount}, ${r.chequeAmount}, ${r.chequeNumber}, ${r.bankName}, ${r.itemsJSON}
+          ${r.cashAmount}, ${r.chequeAmount}, ${r.chequeNumber}, ${r.chequeDate || r.date || ''}, ${r.bankName}, ${r.itemsJSON}
         );
       `));
       insertedCount += chunk.length;

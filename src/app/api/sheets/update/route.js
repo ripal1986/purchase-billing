@@ -67,6 +67,7 @@ export async function POST(req) {
       cashAmount,
       chequeAmount,
       chequeNumber,
+      chequeDate,
       bankName,
       itemsJSON
     } = body;
@@ -124,6 +125,7 @@ export async function POST(req) {
               cash_amount = ${parseFloat(cashAmount) || 0},
               cheque_amount = ${parseFloat(chequeAmount) || 0},
               cheque_number = ${chequeNumber || ''},
+              cheque_date = ${chequeDate || ''},
               bank_name = ${bankName || ''},
               items_json = ${typeof itemsJSON === 'string' ? itemsJSON : JSON.stringify(itemsJSON || [])},
               updated_at = NOW()
@@ -152,6 +154,7 @@ export async function POST(req) {
               cash_amount = ${parseFloat(cashAmount) || 0},
               cheque_amount = ${parseFloat(chequeAmount) || 0},
               cheque_number = ${chequeNumber || ''},
+              cheque_date = ${chequeDate || ''},
               bank_name = ${bankName || ''},
               items_json = ${typeof itemsJSON === 'string' ? itemsJSON : JSON.stringify(itemsJSON || [])},
               updated_at = NOW()

@@ -46,6 +46,7 @@ export async function POST(req) {
       cashAmount,
       chequeAmount,
       chequeNumber,
+      chequeDate,
       bankName,
       itemsJSON
     } = body;
@@ -84,7 +85,7 @@ export async function POST(req) {
             voucher_id, purchase_type, date, daily_purchase_id, farmer_name,
             village_name, mobile_number, variety, net_weight, deduction_grams,
             total_deduction, final_weight, purchase_rate, final_amount, status,
-            cash_amount, cheque_amount, cheque_number, bank_name, items_json
+            cash_amount, cheque_amount, cheque_number, cheque_date, bank_name, items_json
           ) VALUES (
             ${voucherId || ''},
             ${purchaseType},
@@ -104,6 +105,7 @@ export async function POST(req) {
             ${parseFloat(cashAmount) || 0},
             ${parseFloat(chequeAmount) || 0},
             ${chequeNumber || ''},
+            ${chequeDate || ''},
             ${bankName || ''},
             ${typeof itemsJSON === 'string' ? itemsJSON : JSON.stringify(itemsJSON || [])}
           )

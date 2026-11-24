@@ -125,7 +125,8 @@ export default function Home() {
   const [paymentData, setPaymentData] = useState({
     cashAmount: "",
     chequeAmount: "",
-    chequeNumber: ""
+    chequeNumber: "",
+    chequeDate: ""
   });
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -508,6 +509,7 @@ export default function Home() {
         cashAmount: role === "admin" ? (paymentData.cashAmount !== "" ? paymentData.cashAmount : "0") : "",
         chequeAmount: role === "admin" ? (paymentData.chequeAmount !== "" ? paymentData.chequeAmount : "0") : "",
         chequeNumber: role === "admin" ? paymentData.chequeNumber : "",
+        chequeDate: role === "admin" ? (paymentData.chequeDate || formData.date) : "",
         mobileNumber: formData.mobileNumber,
         bankName: role === "admin" ? (voucherSettings.bankName || "") : "",
         itemsJSON: JSON.stringify(formData.items)
@@ -539,7 +541,7 @@ export default function Home() {
           setLastSavedData(payload);
           setShowInvoiceModal(true);
           setFormData(initialForm);
-          setPaymentData({ cashAmount: "", chequeAmount: "", chequeNumber: "" });
+          setPaymentData({ cashAmount: "", chequeAmount: "", chequeNumber: "", chequeDate: "" });
           setActiveTab("completed");
           fetchRecentEntries();
         } else {
@@ -590,6 +592,7 @@ export default function Home() {
         cashAmount: paymentData.cashAmount !== "" ? paymentData.cashAmount : "0",
         chequeAmount: paymentData.chequeAmount !== "" ? paymentData.chequeAmount : "0",
         chequeNumber: paymentData.chequeNumber || "",
+        chequeDate: paymentData.chequeDate || formData.date || "",
         bankName: voucherSettings.bankName || "",
         mobileNumber: formData.mobileNumber,
         itemsJSON: JSON.stringify(formData.items)
@@ -658,7 +661,8 @@ export default function Home() {
     setPaymentData({
       cashAmount: entry.cashAmount || "",
       chequeAmount: entry.chequeAmount || "",
-      chequeNumber: entry.chequeNumber || ""
+      chequeNumber: entry.chequeNumber || "",
+      chequeDate: entry.chequeDate || entry.date || formattedDate || ""
     });
   };
 
@@ -1104,7 +1108,8 @@ export default function Home() {
                       setPaymentData({
                         cashAmount: finalAmount.toString(),
                         chequeAmount: "0",
-                        chequeNumber: ""
+                        chequeNumber: "",
+                        chequeDate: ""
                       });
                     }}
                     className={`payment-quick-btn ${((parseFloat(paymentData.cashAmount) || 0) > 0 && (parseFloat(paymentData.chequeAmount) || 0) === 0) ? "active-cash" : ""}`}
@@ -1117,7 +1122,8 @@ export default function Home() {
                       setPaymentData({
                         cashAmount: "0",
                         chequeAmount: finalAmount.toString(),
-                        chequeNumber: paymentData.chequeNumber || ""
+                        chequeNumber: paymentData.chequeNumber || "",
+                        chequeDate: paymentData.chequeDate || formData.date
                       });
                     }}
                     className={`payment-quick-btn ${((parseFloat(paymentData.chequeAmount) || 0) > 0 && (parseFloat(paymentData.cashAmount) || 0) === 0) ? "active-cheque" : ""}`}
@@ -1130,7 +1136,8 @@ export default function Home() {
                       setPaymentData({
                         cashAmount: "0",
                         chequeAmount: "0",
-                        chequeNumber: ""
+                        chequeNumber: "",
+                        chequeDate: ""
                       });
                     }}
                     className={`payment-quick-btn ${(paymentData.cashAmount === "0" && paymentData.chequeAmount === "0") ? "active-baki" : "baki-outline"}`}
@@ -1147,10 +1154,14 @@ export default function Home() {
 
                   <div className="payment-box">
                     <div className="payment-box-title">🏦 ચેક (CHEQUE)</div>
-                    <input type="number" className="form-input" name="chequeAmount" value={paymentData.chequeAmount} onChange={handlePaymentChange} placeholder="રકમ (₹)" style={{ fontSize: "1.2rem", padding: "0.85rem", marginBottom: "0.75rem", background: "rgba(16, 185, 129, 0.05)", fontWeight: "bold" }} />
-                    <div className="grid-responsive-2" style={{ gap: "0.5rem" }}>
+                    <input type="number" className="form-input" name="chequeAmount" value={paymentData.chequeAmount} onChange={handlePaymentChange} placeholder="રકમ (₹)" style={{ fontSize: "1.2rem", padding: "0.85rem", marginBottom: "0.6rem", background: "rgba(16, 185, 129, 0.05)", fontWeight: "bold" }} />
+                    <div className="grid-responsive-2" style={{ gap: "0.5rem", marginBottom: "0.5rem" }}>
                       <input type="text" className="form-input" disabled value={voucherSettings.bankName || 'Bank name'} style={{ background: "rgba(0,0,0,0.02)", color: "var(--text-muted)" }} />
-                      <input type="tel" inputMode="numeric" pattern="[0-9]*" className="form-input" name="chequeNumber" value={paymentData.chequeNumber} onChange={handlePaymentChange} placeholder="Cheque #" />
+                      <input type="tel" inputMode="numeric" pattern="[0-9]*" className="form-input" name="chequeNumber" value={paymentData.chequeNumber} onChange={handlePaymentChange} placeholder="ચેક નંબર (Cheque #)" />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: "0.78rem", marginBottom: "2px", fontWeight: "600" }}>📅 ચેકની તારીખ (Cheque Date):</label>
+                      <input type="date" className="form-input" name="chequeDate" value={paymentData.chequeDate || formData.date} onChange={handlePaymentChange} style={{ padding: "0.45rem 0.65rem", fontSize: "0.95rem" }} />
                     </div>
                   </div>
                 </div>
@@ -1528,7 +1539,8 @@ export default function Home() {
                     setPaymentData({
                       cashAmount: finalAmount.toString(),
                       chequeAmount: "0",
-                      chequeNumber: ""
+                      chequeNumber: "",
+                      chequeDate: ""
                     });
                   }}
                   className={`payment-quick-btn ${((parseFloat(paymentData.cashAmount) || 0) > 0 && (parseFloat(paymentData.chequeAmount) || 0) === 0) ? "active-cash" : ""}`}
@@ -1541,7 +1553,8 @@ export default function Home() {
                     setPaymentData({
                       cashAmount: "0",
                       chequeAmount: finalAmount.toString(),
-                      chequeNumber: paymentData.chequeNumber || ""
+                      chequeNumber: paymentData.chequeNumber || "",
+                      chequeDate: paymentData.chequeDate || formData.date
                     });
                   }}
                   className={`payment-quick-btn ${((parseFloat(paymentData.chequeAmount) || 0) > 0 && (parseFloat(paymentData.cashAmount) || 0) === 0) ? "active-cheque" : ""}`}
@@ -1554,7 +1567,8 @@ export default function Home() {
                     setPaymentData({
                       cashAmount: "0",
                       chequeAmount: "0",
-                      chequeNumber: ""
+                      chequeNumber: "",
+                      chequeDate: ""
                     });
                   }}
                   className={`payment-quick-btn ${(paymentData.cashAmount === "0" && paymentData.chequeAmount === "0") ? "active-baki" : "baki-outline"}`}
@@ -1572,9 +1586,13 @@ export default function Home() {
                   <label className="form-label">ચેક (Cheque Amt)</label>
                   <input type="number" className="form-input" name="chequeAmount" value={paymentData.chequeAmount} onChange={handlePaymentChange} placeholder="0" />
                 </div>
-                <div className="form-group" style={{ gridColumn: "span 2" }}>
+                <div className="form-group">
                   <label className="form-label">ચેક નંબર {voucherSettings.bankName && `(${voucherSettings.bankName})`}</label>
                   <input type="tel" inputMode="numeric" pattern="[0-9]*" className="form-input" name="chequeNumber" value={paymentData.chequeNumber} onChange={handlePaymentChange} placeholder="દા.ત. 123456" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">ચેકની તારીખ (Cheque Date)</label>
+                  <input type="date" className="form-input" name="chequeDate" value={paymentData.chequeDate || formData.date} onChange={handlePaymentChange} />
                 </div>
               </div>
 
@@ -1679,6 +1697,7 @@ export default function Home() {
               farmerName: entry.farmerName,
               villageName: entry.villageName,
               chequeNumber: entry.chequeNumber,
+              chequeDate: entry.chequeDate || entry.date || "",
               bankName: entry.bankName || primaryBankName,
               amount: chequeAmt,
               rawEntry: entry
@@ -1943,6 +1962,11 @@ export default function Home() {
                                     </td>
                                     <td style={{ fontWeight: "700", color: "#1e293b" }}>
                                       {item.chequeNumber || '—'}
+                                      {item.chequeDate && (
+                                        <div style={{ fontSize: "0.72rem", fontWeight: "normal", color: "var(--text-muted)" }}>
+                                          તા: {item.chequeDate.split('-').reverse().join('/')}
+                                        </div>
+                                      )}
                                     </td>
                                     <td style={{ textAlign: "right", color: "var(--text-muted)", fontSize: "0.8rem" }}>
                                       #{item.voucherId}
@@ -2322,6 +2346,20 @@ export default function Home() {
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>નેટ વજન:</span><strong>{selectedEntry.netWeight} kg</strong></div>
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>ફાઇનલ વજન:</span><strong>{selectedEntry.finalWeight} kg</strong></div>
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>રકમ:</span><strong style={{ color: "var(--success)" }}>₹ {selectedEntry.finalAmount}</strong></div>
+              {parseFloat(selectedEntry.chequeAmount) > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem" }}>
+                  <span>ચેક વિગત:</span>
+                  <strong>
+                    ₹{selectedEntry.chequeAmount} {selectedEntry.chequeNumber ? `(#${selectedEntry.chequeNumber})` : ''} {selectedEntry.chequeDate ? `[તા: ${selectedEntry.chequeDate.split('-').reverse().join('/')}]` : ''}
+                  </strong>
+                </div>
+              )}
+              {parseFloat(selectedEntry.cashAmount) > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem" }}>
+                  <span>રોકડ:</span>
+                  <strong>₹{selectedEntry.cashAmount}</strong>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>સ્ટેટસ:</span><strong>{selectedEntry.status}</strong></div>
             </div>
 
@@ -2486,7 +2524,7 @@ export default function Home() {
                         )}
                         {lastSavedData.chequeAmount > 0 && (
                           <tr className="border-b border-dashed border-neutral-300">
-                            <td className="py-1 tabular-nums text-neutral-800 w-24">{lastSavedData.date ? lastSavedData.date.split('-').reverse().join('/') : ''}</td>
+                            <td className="py-1 tabular-nums text-neutral-800 w-24">{(lastSavedData.chequeDate || lastSavedData.date) ? (lastSavedData.chequeDate || lastSavedData.date).split('-').reverse().join('/') : ''}</td>
                             <td className="py-1 text-neutral-800 font-medium pr-2">
                               Cheque {lastSavedData.chequeNumber ? "#" + lastSavedData.chequeNumber : ""}
                               {lastSavedData.bankName ? " (" + lastSavedData.bankName + ")" : ""}
@@ -2777,7 +2815,7 @@ export default function Home() {
                 const waText = `*${firmName}*\n\nવાઉચર નં: ${lastSavedData.voucherId}\nખેડૂતનું નામ: ${lastSavedData.farmerName}${lastSavedData.villageName ? ' - ' + lastSavedData.villageName : ''}\n\n${itemsText}\n------------------\n*કુલ રકમ: ₹${Math.floor(Number(lastSavedData.finalAmount)).toLocaleString('en-IN')}*\n` 
                 + (lastSavedData.cashAmount ? `રોકડ: ₹${Math.floor(Number(lastSavedData.cashAmount))}\n` : "") 
                 + (lastSavedData.chequeAmount ? `ચેક: ₹${Math.floor(Number(lastSavedData.chequeAmount))}\n` : "")
-                + (lastSavedData.chequeNumber ? `ચેક નં: ${lastSavedData.chequeNumber} ${lastSavedData.bankName ? '(' + lastSavedData.bankName + ')' : ''}\n` : "");
+                + (lastSavedData.chequeNumber ? `ચેક નં: ${lastSavedData.chequeNumber} ${lastSavedData.bankName ? '(' + lastSavedData.bankName + ')' : ''}${lastSavedData.chequeDate ? ' [તારીખ: ' + lastSavedData.chequeDate.split('-').reverse().join('/') + ']' : ''}\n` : "");
                 
                 const cleanPhone = lastSavedData.mobileNumber ? lastSavedData.mobileNumber.replace(/\D/g, '') : '';
                 const waUrl = cleanPhone && cleanPhone.length >= 10 
@@ -2806,7 +2844,7 @@ export default function Home() {
             <div style={{ width: "100%", overflowX: "auto", paddingBottom: "1rem" }} className="hide-on-print">
               <div id="cheque-print-area" style={{ position: "relative", width: "20.3cm", height: "8.9cm", border: "1px dashed #ccc", backgroundColor: "#fdfdfd", fontFamily: "monospace", fontSize: "14px", color: "black", overflow: "visible" }}>
                 <div className="cheque-field" style={{ position: "absolute", top: `${chequeSettings.dateTop}cm`, left: `${chequeSettings.dateLeft}cm`, letterSpacing: `${chequeSettings.dateCharSpacing}px` }}>
-                  {lastSavedData.date.split('-').reverse().join('')}
+                  {(lastSavedData.chequeDate || lastSavedData.date).split('-').reverse().join('')}
                 </div>
                 <div className="cheque-field" style={{ position: "absolute", top: `${chequeSettings.payeeTop}cm`, left: `${chequeSettings.payeeLeft}cm` }}>
                   {lastSavedData.farmerName}
@@ -2824,7 +2862,7 @@ export default function Home() {
             <div id="cheque-print-only" style={{ display: "none" }} className="show-on-print">
               <div style={{ position: "relative", width: "20.3cm", height: "8.9cm", fontFamily: "monospace", fontSize: "14px", color: "black", overflow: "visible" }}>
                 <div style={{ position: "absolute", top: `${chequeSettings.dateTop}cm`, left: `${chequeSettings.dateLeft}cm`, letterSpacing: `${chequeSettings.dateCharSpacing}px` }}>
-                  {lastSavedData.date.split('-').reverse().join('')}
+                  {(lastSavedData.chequeDate || lastSavedData.date).split('-').reverse().join('')}
                 </div>
                 <div style={{ position: "absolute", top: `${chequeSettings.payeeTop}cm`, left: `${chequeSettings.payeeLeft}cm` }}>
                   {lastSavedData.farmerName}
