@@ -66,6 +66,32 @@ export async function initDb() {
       // Column might already exist or table created with it
     }
 
+    // PAYMENTS & RECEIPTS TABLE
+    await sql`
+      CREATE TABLE IF NOT EXISTS payments (
+        id SERIAL PRIMARY KEY,
+        receipt_no VARCHAR(100),
+        payment_type VARCHAR(50) NOT NULL DEFAULT 'Payment',
+        date VARCHAR(50) NOT NULL,
+        party_name VARCHAR(255) NOT NULL,
+        village_name VARCHAR(255),
+        mobile_number VARCHAR(50),
+        payment_mode VARCHAR(50) DEFAULT 'Cash',
+        amount NUMERIC(12, 2) NOT NULL DEFAULT 0,
+        cheque_number VARCHAR(100),
+        cheque_date VARCHAR(50),
+        bank_name VARCHAR(255),
+        reference_bill_no VARCHAR(100),
+        remarks TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    await sql`CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(date);`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_payments_party ON payments(party_name);`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_payments_type ON payments(payment_type);`;
+
     dbInitialized = true;
     return true;
   } catch (err) {
@@ -101,5 +127,26 @@ export function formatDbRow(row) {
     bankName: row.bank_name || '',
     itemsJSON: row.items_json || '[]',
     villageName: row.village_name || ''
+  };
+}
+
+export function formatPaymentRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    receiptNo: row.receipt_no || '',
+    paymentType: row.payment_type || 'Payment',
+    date: row.date || '',
+    partyName: row.party_name || '',
+    villageName: row.village_name || '',
+    mobileNumber: row.mobile_number || '',
+    paymentMode: row.payment_mode || 'Cash',
+    amount: row.amount !== null && row.amount !== undefined ? Number(row.amount) : 0,
+    chequeNumber: row.cheque_number || '',
+    chequeDate: row.cheque_date || '',
+    bankName: row.bank_name || '',
+    referenceBillNo: row.reference_bill_no || '',
+    remarks: row.remarks || '',
+    createdAt: row.created_at || ''
   };
 }

@@ -1371,6 +1371,9 @@ input[type="number"] {
   #chopdo-print-area, #chopdo-print-area * {
     visibility: visible !important;
   }
+  #payment-receipt-print-area, #payment-receipt-print-area * {
+    visibility: visible !important;
+  }
   .chopdo-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;

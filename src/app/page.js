@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LayoutDashboard, CheckSquare, ShieldCheck, FileText, Save, Camera, Printer, LogOut, Share2, List, PlusCircle, X, Settings, UserCircle, CheckCircle, Clock, Download, RefreshCw, Edit, CreditCard, Search, Building2 } from "lucide-react";
+import { LayoutDashboard, CheckSquare, ShieldCheck, FileText, Save, Camera, Printer, LogOut, Share2, List, PlusCircle, X, Settings, UserCircle, CheckCircle, Clock, Download, RefreshCw, Edit, CreditCard, Search, Building2, ArrowDownLeft, ArrowUpRight, Wallet, Trash2 } from "lucide-react";
 import "./globals.css";
 
 const numberToWords = (num) => {
@@ -163,6 +163,193 @@ export default function Home() {
   const [dbSource, setDbSource] = useState("sheets");
   const [isMigrating, setIsMigrating] = useState(false);
 
+  // Payment & Receipt Module State
+  const initialPaymentForm = {
+    receiptNo: "",
+    paymentType: "Payment", // "Payment" (ચુકવણી) or "Receipt" (આવક)
+    date: new Date().toISOString().split("T")[0],
+    partyName: "",
+    villageName: "",
+    mobileNumber: "",
+    paymentMode: "Cash", // "Cash", "Cheque", "RTGS", "UPI"
+    amount: "",
+    chequeNumber: "",
+    chequeDate: "",
+    bankName: "ICICI Bank",
+    referenceBillNo: "",
+    remarks: "",
+    updatePurchasePending: true
+  };
+  const [paymentForm, setPaymentForm] = useState(initialPaymentForm);
+  const [paymentsList, setPaymentsList] = useState([]);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
+  const [paymentSubTab, setPaymentSubTab] = useState("entry"); // "entry" | "history" | "baki"
+  const [paymentFilterType, setPaymentFilterType] = useState("all"); // "all" | "Payment" | "Receipt"
+  const [paymentFilterDate, setPaymentFilterDate] = useState("");
+  const [showPaymentReceiptModal, setShowPaymentReceiptModal] = useState(false);
+  const [selectedPaymentReceipt, setSelectedPaymentReceipt] = useState(null);
+  const [isSavingPayment, setIsSavingPayment] = useState(false);
+
+  const fetchPayments = async () => {
+    setIsLoadingPayments(true);
+    try {
+      let url = '/api/payments';
+      const params = [];
+      if (paymentFilterDate) params.push(`date=${paymentFilterDate}`);
+      if (paymentFilterType && paymentFilterType !== 'all') params.push(`type=${paymentFilterType}`);
+      if (params.length > 0) url += `?${params.join('&')}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.payments)) {
+        setPaymentsList(data.payments);
+      }
+    } catch (e) {
+      console.error("Error fetching payments:", e);
+    }
+    setIsLoadingPayments(false);
+  };
+
+  const handleSavePayment = async (e) => {
+    e.preventDefault();
+    if (!paymentForm.partyName.trim()) {
+      alert("કૃપા કરીને પાર્ટી/ખેડૂતનું નામ લખો.");
+      return;
+    }
+    const amt = parseFloat(paymentForm.amount);
+    if (isNaN(amt) || amt <= 0) {
+      alert("કૃપા કરીને માન્ય રકમ દાખલ કરો.");
+      return;
+    }
+
+    setIsSavingPayment(true);
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...paymentForm,
+          bankName: paymentForm.bankName || voucherSettings.bankName || "ICICI Bank"
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedPaymentReceipt(data.payment);
+        setShowPaymentReceiptModal(true);
+        setPaymentForm({
+          ...initialPaymentForm,
+          date: paymentForm.date,
+          bankName: voucherSettings.bankName || "ICICI Bank"
+        });
+        fetchPayments();
+        fetchRecentEntries(false);
+      } else {
+        alert("એરર: " + (data.error || "પેમેન્ટ સેવ થઈ શક્યું નથી"));
+      }
+    } catch (err) {
+      alert("નેટવર્ક એરર!");
+    }
+    setIsSavingPayment(false);
+  };
+
+  const handleDeletePayment = async (id) => {
+    if (!window.confirm("શું તમે આ પાવતી ખરેખર ડીલીટ કરવા માંગો છો?")) return;
+    try {
+      const res = await fetch(`/api/payments?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        fetchPayments();
+        fetchRecentEntries(false);
+      } else {
+        alert("એરર: " + (data.error || "ડીલીટ થઈ શક્યું નથી"));
+      }
+    } catch (e) {
+      alert("નેટવર્ક એરર!");
+    }
+  };
+
+  const handleQuickPayBaki = (bakiItem) => {
+    setPaymentForm({
+      receiptNo: "",
+      paymentType: "Payment",
+      date: new Date().toISOString().split("T")[0],
+      partyName: bakiItem.farmerName || "",
+      villageName: bakiItem.villageName || "",
+      mobileNumber: bakiItem.mobileNumber || "",
+      paymentMode: "Cash",
+      amount: String(bakiItem.amount || ""),
+      chequeNumber: "",
+      chequeDate: "",
+      bankName: voucherSettings.bankName || "ICICI Bank",
+      referenceBillNo: String(bakiItem.voucherId || ""),
+      remarks: `ખરીદી બિલ #${bakiItem.voucherId} પેટે ચુકવણી`,
+      updatePurchasePending: true
+    });
+    setPaymentSubTab("entry");
+    setActiveTab("payment");
+  };
+
+  const handlePrintPaymentReceipt = () => {
+    const style = document.createElement('style');
+    style.id = 'payment-print-style';
+    style.innerHTML = `
+      @media print {
+        @page { size: 148mm 210mm portrait !important; margin: 6mm !important; }
+        body * { visibility: hidden !important; }
+        #payment-receipt-print-area, #payment-receipt-print-area * { visibility: visible !important; }
+        #payment-receipt-print-area {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 136mm !important;
+          margin: 0 auto !important;
+          padding: 4mm !important;
+          border: 1.5px solid #000 !important;
+          border-radius: 4px !important;
+          background: #ffffff !important;
+        }
+        .hide-on-print { display: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+    window.print();
+    setTimeout(() => {
+      const el = document.getElementById('payment-print-style');
+      if (el) el.remove();
+    }, 1500);
+  };
+
+  const handleSharePaymentWhatsApp = (payment) => {
+    if (!payment) return;
+    const isPay = payment.paymentType === 'Payment';
+    let text = `🌾 *${voucherSettings.firmName || "દર્શન સીડ્સ"}* 🌾\n`;
+    text += `${isPay ? '🔴 *ચુકવણી વાઉચર (Payment Voucher)*' : '🟢 *આવક પાવતી (Receipt Voucher)*'}\n`;
+    text += `--------------------------------\n`;
+    text += `📋 *વાઉચર નં:* #${payment.receiptNo}\n`;
+    text += `📅 *તારીખ:* ${payment.date ? payment.date.split('-').reverse().join('/') : ''}\n`;
+    text += `👤 *પાર્ટી:* ${payment.partyName}${payment.villageName ? ' (' + payment.villageName + ')' : ''}\n`;
+    text += `💰 *રકમ:* ₹${Number(payment.amount).toLocaleString('en-IN')}\n`;
+    text += `💳 *માધ્યમ:* ${payment.paymentMode}\n`;
+    if (payment.paymentMode === 'Cheque') {
+      text += `🏦 *ચેક નં:* ${payment.chequeNumber || '—'} ${payment.chequeDate ? `[તા: ${payment.chequeDate.split('-').reverse().join('/')}]` : ''}\n`;
+      text += `🏛️ *બેંક:* ${payment.bankName || '—'}\n`;
+    }
+    if (payment.referenceBillNo) {
+      text += `🧾 *સંદર્ભ બિલ:* #${payment.referenceBillNo}\n`;
+    }
+    if (payment.remarks) {
+      text += `📝 *વિગત:* ${payment.remarks}\n`;
+    }
+    text += `--------------------------------\n`;
+    text += `આભાર! 🙏\n`;
+
+    const cleanPhone = payment.mobileNumber ? payment.mobileNumber.replace(/\D/g, '') : '';
+    const waUrl = cleanPhone && cleanPhone.length >= 10 
+      ? `whatsapp://send?phone=91${cleanPhone.slice(-10)}&text=${encodeURIComponent(text)}` 
+      : `whatsapp://send?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank');
+  };
+
   useEffect(() => {
     if (showChequeModal) {
       const style = document.createElement('style');
@@ -283,8 +470,11 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (role === "admin" || activeTab === "recent" || activeTab === "pending" || activeTab === "completed" || activeTab === "report") {
+    if (role === "admin" || activeTab === "recent" || activeTab === "pending" || activeTab === "completed" || activeTab === "report" || activeTab === "payment") {
       fetchRecentEntries();
+    }
+    if (activeTab === "payment") {
+      fetchPayments();
     }
   }, [activeTab, role]);
 
@@ -964,6 +1154,12 @@ export default function Home() {
             <button onClick={() => setActiveTab("report")} className={`header-nav-btn ${activeTab === "report" ? "active" : ""}`} title="Report">
               <FileText className="nav-icon" />
               <span className="nav-label">રિપોર્ટ</span>
+            </button>
+          )}
+          {(role === "admin" || role === "helper") && (
+            <button onClick={() => { setActiveTab("payment"); fetchPayments(); }} className={`header-nav-btn ${activeTab === "payment" ? "active" : ""}`} title="પેમેન્ટ">
+              <CreditCard className="nav-icon" />
+              <span className="nav-label">પેમેન્ટ</span>
             </button>
           )}
           {role === "admin" && (
@@ -2137,7 +2333,7 @@ export default function Home() {
                                       {role === 'admin' && (
                                         <button
                                           type="button"
-                                          onClick={() => openApprovalModal(item.rawEntry)}
+                                          onClick={() => handleQuickPayBaki(item)}
                                           className="btn btn-outline hide-on-print"
                                           style={{ padding: "1px 5px", fontSize: "0.68rem", borderColor: "#dc2626", color: "#dc2626" }}
                                           title="પેમેન્ટ કરો"
@@ -2259,6 +2455,615 @@ export default function Home() {
                 </>
               )}
             </div>
+          </div>
+        );
+      })()}
+
+      {/* PAYMENT & RECEIPT MODULE */}
+      {activeTab === "payment" && (() => {
+        // Compute unpaid purchase bills for the quick pay subtab
+        const unpaidPurchases = recentEntries.filter(entry => {
+          const finalAmt = parseFloat(entry.finalAmount) || 0;
+          const cashAmt = parseFloat(entry.cashAmount) || 0;
+          const chequeAmt = parseFloat(entry.chequeAmount) || 0;
+          return (finalAmt - (cashAmt + chequeAmt)) > 0;
+        });
+
+        // Compute unique farmer names for autocomplete
+        const uniqueFarmers = Array.from(new Set(recentEntries.map(e => e.farmerName).filter(Boolean)));
+
+        // Filter payments in history tab
+        const filteredPayments = paymentsList.filter(p => {
+          if (paymentFilterType !== "all" && p.paymentType !== paymentFilterType) return false;
+          if (paymentFilterDate && p.date !== paymentFilterDate) return false;
+          return true;
+        });
+
+        const totalPaymentsPaid = filteredPayments.filter(p => p.paymentType === 'Payment').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        const totalReceiptsReceived = filteredPayments.filter(p => p.paymentType === 'Receipt').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+        return (
+          <div className="animate-fade-in" style={{ padding: 0 }}>
+            {/* TOP HEADER & SUB-TABS */}
+            <div className="hide-on-print" style={{ marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.8rem" }}>
+                <div>
+                  <h2 style={{ color: "var(--primary)", margin: 0, fontSize: "1.3rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <CreditCard size={22} /> પેમેન્ટ & પાવતી વ્યવસ્થાપન
+                  </h2>
+                  <p style={{ color: "var(--text-muted)", margin: "2px 0 0 0", fontSize: "0.82rem" }}>
+                    ખેડૂત/પાર્ટી ચુકવણી, બાકી પેમેન્ટ અને આવક પાવતી રસીદ
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentSubTab("entry");
+                      setPaymentForm({
+                        ...initialPaymentForm,
+                        bankName: voucherSettings.bankName || "ICICI Bank"
+                      });
+                    }}
+                    className={`btn ${paymentSubTab === "entry" ? "btn-primary" : "btn-outline"}`}
+                    style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.45rem 0.85rem", fontSize: "0.88rem" }}
+                  >
+                    <PlusCircle size={16} /> નવી પાવતી
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentSubTab("history");
+                      fetchPayments();
+                    }}
+                    className={`btn ${paymentSubTab === "history" ? "btn-primary" : "btn-outline"}`}
+                    style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.45rem 0.85rem", fontSize: "0.88rem" }}
+                  >
+                    <FileText size={16} /> પાવતી રજિસ્ટર ({paymentsList.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentSubTab("baki")}
+                    className={`btn ${paymentSubTab === "baki" ? "btn-primary" : "btn-outline"}`}
+                    style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.45rem 0.85rem", fontSize: "0.88rem", borderColor: unpaidPurchases.length > 0 ? "var(--danger)" : "", color: unpaidPurchases.length > 0 && paymentSubTab !== "baki" ? "var(--danger)" : "" }}
+                  >
+                    <Clock size={16} /> બાકી ખેડૂતો ({unpaidPurchases.length})
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* SUBTAB 1: NEW PAYMENT / RECEIPT ENTRY FORM */}
+            {paymentSubTab === "entry" && (
+              <div className="glass-panel" style={{ padding: "1.5rem", borderRadius: "12px", maxWidth: "700px", margin: "0 auto", backgroundColor: "#fff" }}>
+                <form onSubmit={handleSavePayment}>
+                  {/* PAYMENT TYPE SELECTOR (PAYMENT vs RECEIPT) */}
+                  <div style={{ marginBottom: "1.2rem" }}>
+                    <label className="form-label" style={{ fontWeight: "700", marginBottom: "0.4rem" }}>વાઉચરનો પ્રકાર પસંદ કરો:</label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentForm(prev => ({ ...prev, paymentType: "Payment" }))}
+                        className="btn"
+                        style={{
+                          padding: "0.7rem",
+                          fontWeight: "800",
+                          fontSize: "0.95rem",
+                          border: paymentForm.paymentType === "Payment" ? "2px solid #dc2626" : "1.5px solid #cbd5e1",
+                          background: paymentForm.paymentType === "Payment" ? "#fef2f2" : "#ffffff",
+                          color: paymentForm.paymentType === "Payment" ? "#b91c1c" : "#64748b",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "0.5rem"
+                        }}
+                      >
+                        <ArrowUpRight size={18} /> 🔴 ચુકવણી / જાવક (Payment)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPaymentForm(prev => ({ ...prev, paymentType: "Receipt" }))}
+                        className="btn"
+                        style={{
+                          padding: "0.7rem",
+                          fontWeight: "800",
+                          fontSize: "0.95rem",
+                          border: paymentForm.paymentType === "Receipt" ? "2px solid #16a34a" : "1.5px solid #cbd5e1",
+                          background: paymentForm.paymentType === "Receipt" ? "#f0fdf4" : "#ffffff",
+                          color: paymentForm.paymentType === "Receipt" ? "#166534" : "#64748b",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "0.5rem"
+                        }}
+                      >
+                        <ArrowDownLeft size={18} /> 🟢 આવક / જમા (Receipt)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* DATE & VOUCHER NO */}
+                  <div className="grid-equal-2" style={{ marginBottom: "1rem" }}>
+                    <div className="form-group">
+                      <label className="form-label">તારીખ (Date) *</label>
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={paymentForm.date}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">પાવતી / વાઉચર નં (ખાલી રાખતાં ઓટો આવશે)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="દા.ત. PAY-001"
+                        value={paymentForm.receiptNo}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, receiptNo: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* PARTY NAME & VILLAGE */}
+                  <div className="grid-equal-2" style={{ marginBottom: "1rem" }}>
+                    <div className="form-group">
+                      <label className="form-label">શ્રી પાર્ટી / ખેડૂત / ખાતાનું નામ *</label>
+                      <input
+                        type="text"
+                        list="farmer-suggestions"
+                        className="form-input"
+                        placeholder="નામ લખો અથવા નીચેથી પસંદ કરો"
+                        value={paymentForm.partyName}
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          const matched = recentEntries.find(entry => entry.farmerName === name);
+                          setPaymentForm(prev => ({
+                            ...prev,
+                            partyName: name,
+                            villageName: matched ? (matched.villageName || prev.villageName) : prev.villageName,
+                            mobileNumber: matched ? (matched.mobileNumber || prev.mobileNumber) : prev.mobileNumber
+                          }));
+                        }}
+                        required
+                      />
+                      <datalist id="farmer-suggestions">
+                        {uniqueFarmers.map((fn, i) => (
+                          <option key={i} value={fn} />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">ગામનું નામ (Village)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="ગામ"
+                        value={paymentForm.villageName}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, villageName: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* MOBILE & REFERENCE BILL */}
+                  <div className="grid-equal-2" style={{ marginBottom: "1rem" }}>
+                    <div className="form-group">
+                      <label className="form-label">મોબાઈલ નંબર</label>
+                      <input
+                        type="tel"
+                        maxLength="10"
+                        className="form-input"
+                        placeholder="૧૦ આંકડાનો મોબાઈલ"
+                        value={paymentForm.mobileNumber}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, mobileNumber: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">સંદર્ભ ખરીદી બિલ નં (વિકલ્પ)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="દા.ત. 101"
+                        value={paymentForm.referenceBillNo}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, referenceBillNo: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* AMOUNT BOX */}
+                  <div style={{ background: "#f8fafc", padding: "1rem", borderRadius: "10px", border: "1.5px solid #cbd5e1", marginBottom: "1.2rem" }}>
+                    <label className="form-label" style={{ fontSize: "1rem", fontWeight: "800", color: paymentForm.paymentType === "Payment" ? "#b91c1c" : "#166534" }}>
+                      {paymentForm.paymentType === "Payment" ? "ચૂકવવાની રકમ (Amount ₹) *" : "મળેલ રકમ (Amount ₹) *"}
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      className="form-input"
+                      style={{ fontSize: "1.4rem", fontWeight: "800", padding: "0.6rem 0.8rem", color: paymentForm.paymentType === "Payment" ? "#b91c1c" : "#166534" }}
+                      placeholder="₹ 0"
+                      value={paymentForm.amount}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                      required
+                    />
+                    {paymentForm.amount && !isNaN(Number(paymentForm.amount)) && (
+                      <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "4px" }}>
+                        અંકે રૂપિયા: <strong>{numberToWords(Number(paymentForm.amount))}</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* PAYMENT MODE SELECTOR */}
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label className="form-label" style={{ fontWeight: "700" }}>ચુકવણીનું માધ્યમ (Payment Mode):</label>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem" }}>
+                      {["Cash", "Cheque", "Online"].map(mode => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setPaymentForm({ ...paymentForm, paymentMode: mode })}
+                          className="btn"
+                          style={{
+                            padding: "0.55rem",
+                            fontSize: "0.9rem",
+                            fontWeight: "700",
+                            border: paymentForm.paymentMode === mode ? "2px solid var(--primary)" : "1px solid #cbd5e1",
+                            background: paymentForm.paymentMode === mode ? "rgba(46, 125, 50, 0.1)" : "#ffffff",
+                            color: paymentForm.paymentMode === mode ? "var(--primary)" : "#64748b"
+                          }}
+                        >
+                          {mode === "Cash" && "💵 રોકડ (Cash)"}
+                          {mode === "Cheque" && "🏦 બેંક ચેક (Cheque)"}
+                          {mode === "Online" && "📱 UPI / RTGS"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* CHEQUE DETAILS (IF MODE IS CHEQUE) */}
+                  {paymentForm.paymentMode === "Cheque" && (
+                    <div style={{ background: "#eff6ff", padding: "0.9rem", borderRadius: "8px", border: "1px solid #bfdbfe", marginBottom: "1rem" }}>
+                      <div className="grid-equal-2" style={{ marginBottom: "0.6rem" }}>
+                        <div className="form-group">
+                          <label className="form-label">ચેક નંબર *</label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="દા.ત. 3487"
+                            value={paymentForm.chequeNumber}
+                            onChange={(e) => setPaymentForm({ ...paymentForm, chequeNumber: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">ચેક તારીખ *</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            value={paymentForm.chequeDate || paymentForm.date}
+                            onChange={(e) => setPaymentForm({ ...paymentForm, chequeDate: e.target.value })}
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">બેંકનું નામ</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="બેંકનું નામ"
+                          value={paymentForm.bankName}
+                          onChange={(e) => setPaymentForm({ ...paymentForm, bankName: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* REMARKS */}
+                  <div className="form-group" style={{ marginBottom: "1.2rem" }}>
+                    <label className="form-label">વિગત / શેરો (Narration / Remark)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="દા.ત. મગફળી ખરીદી બિલ પેટે ચૂકવણી / ગાડી ભાડું"
+                      value={paymentForm.remarks}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, remarks: e.target.value })}
+                    />
+                  </div>
+
+                  {paymentForm.referenceBillNo && (
+                    <div style={{ marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.9rem", color: "#1e293b" }}>
+                      <input
+                        type="checkbox"
+                        id="updatePurchasePendingCheck"
+                        checked={paymentForm.updatePurchasePending}
+                        onChange={(e) => setPaymentForm({ ...paymentForm, updatePurchasePending: e.target.checked })}
+                        style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                      />
+                      <label htmlFor="updatePurchasePendingCheck" style={{ cursor: "pointer", fontWeight: "600" }}>
+                        આ રકમ ખરીદી બિલ #{paymentForm.referenceBillNo} ના બાકી હિસાબમાં આપોઆપ જમા કરવી
+                      </label>
+                    </div>
+                  )}
+
+                  {/* ACTION BUTTONS */}
+                  <div style={{ display: "flex", gap: "0.75rem" }}>
+                    <button
+                      type="submit"
+                      disabled={isSavingPayment}
+                      className="btn btn-primary"
+                      style={{ flex: 1, padding: "0.75rem", fontSize: "1rem", fontWeight: "800", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}
+                    >
+                      <Save size={18} /> {isSavingPayment ? "સેવ થઈ રહ્યું છે..." : "💾 સેવ કરો અને પાવતી બનાવો"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentForm({ ...initialPaymentForm, bankName: voucherSettings.bankName || "ICICI Bank" })}
+                      className="btn btn-outline"
+                      style={{ padding: "0.75rem 1.2rem" }}
+                    >
+                      રિસેટ
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* SUBTAB 2: PAYMENT REGISTER / HISTORY */}
+            {paymentSubTab === "history" && (
+              <div>
+                {/* FILTER BAR */}
+                <div className="glass-panel" style={{ padding: "0.75rem 1rem", borderRadius: "10px", marginBottom: "1rem", display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <select
+                      value={paymentFilterType}
+                      onChange={(e) => setPaymentFilterType(e.target.value)}
+                      className="form-input"
+                      style={{ padding: "0.4rem 0.6rem", fontSize: "0.85rem", width: "auto" }}
+                    >
+                      <option value="all">તમામ પ્રકાર (ચુકવણી + આવક)</option>
+                      <option value="Payment">🔴 ફક્ત ચુકવણી (Payment Out)</option>
+                      <option value="Receipt">🟢 ફક્ત આવક (Receipt In)</option>
+                    </select>
+
+                    <input
+                      type="date"
+                      className="form-input filter-date"
+                      value={paymentFilterDate}
+                      onChange={(e) => setPaymentFilterDate(e.target.value)}
+                      style={{ padding: "0.4rem 0.6rem", fontSize: "0.85rem", width: "auto" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const today = new Date().toISOString().split("T")[0];
+                        setPaymentFilterDate(today);
+                      }}
+                      className="btn btn-outline"
+                      style={{ padding: "0.4rem 0.6rem", fontSize: "0.8rem" }}
+                    >
+                      આજે
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentFilterDate("")}
+                      className="btn btn-outline"
+                      style={{ padding: "0.4rem 0.6rem", fontSize: "0.8rem" }}
+                    >
+                      બધા દિવસો
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={fetchPayments}
+                    className="btn btn-outline"
+                    style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.3rem" }}
+                  >
+                    <RefreshCw size={14} /> રિફ્રેશ
+                  </button>
+                </div>
+
+                {/* SUMMARY STATS BAR */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
+                  <div style={{ background: "#fef2f2", padding: "0.8rem 1rem", borderRadius: "10px", border: "1px solid #fecaca" }}>
+                    <div style={{ fontSize: "0.8rem", color: "#991b1b", fontWeight: "700" }}>કુલ ચુકવણી (Payment Out)</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: "800", color: "#dc2626" }}>₹{totalPaymentsPaid.toLocaleString('en-IN')}</div>
+                  </div>
+                  <div style={{ background: "#f0fdf4", padding: "0.8rem 1rem", borderRadius: "10px", border: "1px solid #bbf7d0" }}>
+                    <div style={{ fontSize: "0.8rem", color: "#166534", fontWeight: "700" }}>કુલ આવક (Receipt In)</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: "800", color: "#16a34a" }}>₹{totalReceiptsReceived.toLocaleString('en-IN')}</div>
+                  </div>
+                  <div style={{ background: "#eff6ff", padding: "0.8rem 1rem", borderRadius: "10px", border: "1px solid #bfdbfe" }}>
+                    <div style={{ fontSize: "0.8rem", color: "#1e40af", fontWeight: "700" }}>કુલ પાવતીઓ</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: "800", color: "#2563eb" }}>{filteredPayments.length} એન્ટ્રી</div>
+                  </div>
+                </div>
+
+                {/* TABLE OF PAYMENTS */}
+                {isLoadingPayments ? (
+                  <p style={{ textAlign: "center", padding: "2rem" }}>લોડ થઈ રહ્યું છે...</p>
+                ) : filteredPayments.length === 0 ? (
+                  <div className="glass-panel" style={{ padding: "2.5rem", textAlign: "center", color: "var(--text-muted)", borderRadius: "10px" }}>
+                    કોઈ પાવતી કે ચુકવણી એન્ટ્રી મળી નથી.
+                  </div>
+                ) : (
+                  <div className="table-responsive" style={{ overflowX: "auto" }}>
+                    <table className="chopdo-table" style={{ background: "#fff", borderRadius: "10px", overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+                      <thead>
+                        <tr>
+                          <th>તારીખ</th>
+                          <th>વાઉચર નં</th>
+                          <th>પ્રકાર</th>
+                          <th>પાર્ટીનું નામ</th>
+                          <th>રકમ (₹)</th>
+                          <th>માધ્યમ</th>
+                          <th>વિગત / સંદર્ભ</th>
+                          <th style={{ textAlign: "right" }}>એક્શન</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredPayments.map((p, idx) => {
+                          const isPay = p.paymentType === 'Payment';
+                          return (
+                            <tr key={idx}>
+                              <td>{p.date ? p.date.split('-').reverse().join('/') : ''}</td>
+                              <td style={{ fontWeight: "700" }}>#{p.receiptNo}</td>
+                              <td>
+                                <span style={{ padding: "2px 6px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: "800", background: isPay ? "#fee2e2" : "#dcfce7", color: isPay ? "#dc2626" : "#166534" }}>
+                                  {isPay ? "ચુકવણી" : "આવક"}
+                                </span>
+                              </td>
+                              <td style={{ fontWeight: "700" }}>
+                                {p.partyName}
+                                {p.villageName && <span style={{ fontWeight: "normal", fontSize: "0.78rem", color: "var(--text-muted)" }}> ({p.villageName})</span>}
+                              </td>
+                              <td style={{ fontWeight: "800", color: isPay ? "#dc2626" : "#166534" }}>
+                                ₹{Number(p.amount).toLocaleString('en-IN')}
+                              </td>
+                              <td>
+                                <div>{p.paymentMode}</div>
+                                {p.paymentMode === 'Cheque' && p.chequeNumber && (
+                                  <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>#{p.chequeNumber}</div>
+                                )}
+                              </td>
+                              <td style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                                {p.remarks}
+                                {p.referenceBillNo && <span style={{ marginLeft: "4px", fontWeight: "700", color: "var(--primary)" }}>[બિલ #{p.referenceBillNo}]</span>}
+                              </td>
+                              <td style={{ textAlign: "right" }}>
+                                <div style={{ display: "flex", gap: "4px", justifyContent: "flex-end" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedPaymentReceipt(p);
+                                      setShowPaymentReceiptModal(true);
+                                    }}
+                                    className="btn btn-outline"
+                                    style={{ padding: "2px 6px", fontSize: "0.75rem" }}
+                                    title="પહોંચ પ્રિન્ટ"
+                                  >
+                                    <Printer size={13} /> પહોંચ
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSharePaymentWhatsApp(p)}
+                                    className="btn btn-outline"
+                                    style={{ padding: "2px 6px", fontSize: "0.75rem", borderColor: "#25D366", color: "#25D366" }}
+                                    title="WhatsApp શેર"
+                                  >
+                                    <Share2 size={13} />
+                                  </button>
+                                  {role === "admin" && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeletePayment(p.id)}
+                                      className="btn btn-outline"
+                                      style={{ padding: "2px 6px", fontSize: "0.75rem", borderColor: "#ef4444", color: "#ef4444" }}
+                                      title="ડીલીટ"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SUBTAB 3: QUICK PAY FROM PENDING PURCHASE BILLS */}
+            {paymentSubTab === "baki" && (
+              <div>
+                <div style={{ marginBottom: "1rem", padding: "0.75rem 1rem", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div>
+                    <strong style={{ color: "#b91c1c" }}>⚠️ બાકી પેમેન્ટ ચૂકવવાની યાદી</strong>
+                    <div style={{ fontSize: "0.82rem", color: "#7f1d1d" }}>ખરીદીના જે બિલોમાં નાણાં ચૂકવવાના બાકી છે તેમની યાદી. અહીંથી ૧-ક્લિકમાં ચુકવણી કરો.</div>
+                  </div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: "800", color: "#b91c1c" }}>
+                    કુલ બાકી: ₹{unpaidPurchases.reduce((s, e) => s + (parseFloat(e.finalAmount) - (parseFloat(e.cashAmount) || 0) - (parseFloat(e.chequeAmount) || 0)), 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+
+                {unpaidPurchases.length === 0 ? (
+                  <div className="glass-panel" style={{ padding: "2.5rem", textAlign: "center", color: "#166534", background: "#f0fdf4", borderRadius: "10px" }}>
+                    ✅ તમામ ખેડૂતોનું પેમેન્ટ પૂર્ણ છે! કોઈ બાકી પેમેન્ટ નથી.
+                  </div>
+                ) : (
+                  <div className="table-responsive" style={{ overflowX: "auto" }}>
+                    <table className="chopdo-table" style={{ background: "#fff", borderRadius: "10px", overflow: "hidden", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+                      <thead>
+                        <tr>
+                          <th>બિલ નં</th>
+                          <th>તારીખ</th>
+                          <th>પ્રકાર</th>
+                          <th>ખેડૂતનું નામ</th>
+                          <th>ગામ</th>
+                          <th>કુલ બિલ (₹)</th>
+                          <th>ચૂકવેલ (₹)</th>
+                          <th>બાકી રકમ (₹)</th>
+                          <th style={{ textAlign: "right" }}>ચુકવણી</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {unpaidPurchases.map((entry, idx) => {
+                          const finalAmt = parseFloat(entry.finalAmount) || 0;
+                          const paidAmt = (parseFloat(entry.cashAmount) || 0) + (parseFloat(entry.chequeAmount) || 0);
+                          const bakiAmt = Math.max(0, finalAmt - paidAmt);
+                          const dmy = entry.date ? entry.date.split('-').reverse().join('/') : '';
+
+                          return (
+                            <tr key={idx} style={{ background: "#fff5f5" }}>
+                              <td style={{ fontWeight: "700" }}>#{entry.voucherId}</td>
+                              <td>{dmy}</td>
+                              <td>
+                                <span style={{ fontSize: "0.75rem", padding: "2px 6px", borderRadius: "4px", background: entry.sheetName === 'APMC' ? '#e0f2fe' : '#fef3c7', color: entry.sheetName === 'APMC' ? '#0369a1' : '#b45309', fontWeight: "bold" }}>
+                                  {entry.sheetName === 'APMC' ? 'APMC' : 'Direct'}
+                                </span>
+                              </td>
+                              <td style={{ fontWeight: "800", color: "#1e293b" }}>{entry.farmerName}</td>
+                              <td>{entry.villageName || '—'}</td>
+                              <td style={{ fontWeight: "700" }}>₹{finalAmt.toLocaleString('en-IN')}</td>
+                              <td style={{ color: "#166534" }}>₹{paidAmt.toLocaleString('en-IN')}</td>
+                              <td style={{ fontWeight: "800", color: "#dc2626", fontSize: "0.95rem" }}>
+                                ₹{bakiAmt.toLocaleString('en-IN')}
+                              </td>
+                              <td style={{ textAlign: "right" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickPayBaki({
+                                    voucherId: entry.voucherId,
+                                    farmerName: entry.farmerName,
+                                    villageName: entry.villageName,
+                                    mobileNumber: entry.mobileNumber,
+                                    amount: bakiAmt
+                                  })}
+                                  className="btn btn-primary"
+                                  style={{ padding: "0.35rem 0.75rem", fontSize: "0.82rem", fontWeight: "700" }}
+                                >
+                                  💳 ચૂકવો
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
       })()}
@@ -2972,6 +3777,181 @@ export default function Home() {
 
             <div className="hide-on-print" style={{ marginTop: "1.5rem", display: "flex", gap: "1rem" }}>
               <button type="button" onClick={() => window.print()} className="btn btn-primary" style={{ flex: 1 }}><Printer size={18} /> ચેક પ્રિન્ટ કરો</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAYMENT RECEIPT MODAL */}
+      {showPaymentReceiptModal && selectedPaymentReceipt && (
+        <div className="modal-overlay">
+          <div className="glass-panel animate-fade-in" style={{ padding: "1.5rem", maxWidth: "550px", width: "95%", maxHeight: "95vh", overflowY: "auto", backgroundColor: "#ffffff" }}>
+            <div className="hide-on-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ color: "var(--primary)", margin: 0, fontSize: "1.2rem" }}>
+                {selectedPaymentReceipt.paymentType === 'Payment' ? 'ચુકવણી વાઉચર પાવતી' : 'આવક રસીદ પાવતી'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowPaymentReceiptModal(false)}
+                className="btn btn-outline"
+                style={{ padding: "0.4rem" }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* PRINTABLE RECEIPT SLIP AREA */}
+            <div
+              id="payment-receipt-print-area"
+              style={{
+                border: "2px solid #000",
+                borderRadius: "6px",
+                padding: "16px 20px",
+                backgroundColor: "#fff",
+                color: "#000",
+                fontFamily: "sans-serif",
+                position: "relative"
+              }}
+            >
+              {/* SLIP TOP HEADER */}
+              <div style={{ textAlign: "center", borderBottom: "1.5px solid #000", paddingBottom: "10px", marginBottom: "12px" }}>
+                <div style={{ fontSize: "11px", fontWeight: "bold", color: "#b91c1c" }}>॥ શ્રી ગણેશાય નમઃ ॥</div>
+                <div style={{ fontSize: "20px", fontWeight: "900", letterSpacing: "0.5px", marginTop: "2px" }}>
+                  🌾 {voucherSettings.firmName || "દર્શન સીડ્સ ઇન્ડસ્ટ્રીઝ"}
+                </div>
+                <div style={{ fontSize: "11px", color: "#444", marginTop: "2px" }}>
+                  ખાતર, બિયારણ અને મગફળીના જથ્થાબંધ વેપારી
+                </div>
+                <div style={{ marginTop: "6px" }}>
+                  <span style={{
+                    display: "inline-block",
+                    padding: "3px 14px",
+                    borderRadius: "4px",
+                    fontWeight: "900",
+                    fontSize: "13px",
+                    letterSpacing: "0.5px",
+                    background: selectedPaymentReceipt.paymentType === 'Payment' ? "#fee2e2" : "#dcfce7",
+                    color: selectedPaymentReceipt.paymentType === 'Payment' ? "#b91c1c" : "#166534",
+                    border: "1px solid #000"
+                  }}>
+                    {selectedPaymentReceipt.paymentType === 'Payment' ? '🔴 ચુકવણી વાઉચર (PAYMENT VOUCHER)' : '🟢 આવક પાવતી (RECEIPT VOUCHER)'}
+                  </span>
+                </div>
+              </div>
+
+              {/* VOUCHER NO & DATE */}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", borderBottom: "1px dashed #666", paddingBottom: "8px", marginBottom: "10px" }}>
+                <div>
+                  <strong>વાઉચર નં:</strong> <span style={{ fontSize: "13px", fontWeight: "bold" }}>#{selectedPaymentReceipt.receiptNo}</span>
+                </div>
+                <div>
+                  <strong>તારીખ:</strong> {selectedPaymentReceipt.date ? selectedPaymentReceipt.date.split('-').reverse().join('/') : ''}
+                </div>
+              </div>
+
+              {/* PARTY DETAILS */}
+              <div style={{ fontSize: "13px", lineHeight: "1.6", marginBottom: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>
+                    <strong>શ્રી:</strong> <span style={{ fontSize: "14px", fontWeight: "800" }}>{selectedPaymentReceipt.partyName}</span>
+                    {selectedPaymentReceipt.villageName && <span> ({selectedPaymentReceipt.villageName})</span>}
+                  </span>
+                  {selectedPaymentReceipt.mobileNumber && (
+                    <span style={{ fontSize: "12px", color: "#444" }}>મો. {selectedPaymentReceipt.mobileNumber}</span>
+                  )}
+                </div>
+                {selectedPaymentReceipt.referenceBillNo && (
+                  <div style={{ fontSize: "12px", color: "#333", marginTop: "2px" }}>
+                    <strong>સંદર્ભ ખરીદી બિલ નં:</strong> #{selectedPaymentReceipt.referenceBillNo}
+                  </div>
+                )}
+                {selectedPaymentReceipt.remarks && (
+                  <div style={{ fontSize: "12px", color: "#333", marginTop: "2px" }}>
+                    <strong>વિગત:</strong> {selectedPaymentReceipt.remarks}
+                  </div>
+                )}
+              </div>
+
+              {/* AMOUNT BOX */}
+              <div style={{
+                background: "#f8fafc",
+                border: "1.5px solid #000",
+                borderRadius: "6px",
+                padding: "10px 14px",
+                marginBottom: "12px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: "bold", textTransform: "uppercase" }}>
+                    {selectedPaymentReceipt.paymentType === 'Payment' ? 'ચૂકવેલ રકમ' : 'મળેલ રકમ'}
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#555", marginTop: "2px" }}>
+                    અંકે રૂપિયા: {numberToWords(Number(selectedPaymentReceipt.amount))}
+                  </div>
+                </div>
+                <div style={{ fontSize: "22px", fontWeight: "900" }}>
+                  ₹ {Number(selectedPaymentReceipt.amount).toLocaleString('en-IN')}
+                </div>
+              </div>
+
+              {/* PAYMENT MODE DETAILS */}
+              <div style={{ fontSize: "12px", marginBottom: "20px", background: "#fdfdfd", padding: "6px 8px", border: "1px dotted #888" }}>
+                <div><strong>માધ્યમ:</strong> {selectedPaymentReceipt.paymentMode}</div>
+                {selectedPaymentReceipt.paymentMode === 'Cheque' && (
+                  <div style={{ marginTop: "3px" }}>
+                    <strong>ચેક નં:</strong> {selectedPaymentReceipt.chequeNumber || '—'} &nbsp;|&nbsp; 
+                    <strong>તા:</strong> {selectedPaymentReceipt.chequeDate ? selectedPaymentReceipt.chequeDate.split('-').reverse().join('/') : ''} &nbsp;|&nbsp; 
+                    <strong>બેંક:</strong> {selectedPaymentReceipt.bankName || '—'}
+                  </div>
+                )}
+              </div>
+
+              {/* SIGNATURES */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "30px", paddingTop: "10px", fontSize: "12px" }}>
+                <div style={{ textAlign: "center", width: "40%" }}>
+                  <div style={{ borderTop: "1px solid #000", paddingTop: "4px", fontWeight: "bold" }}>
+                    {selectedPaymentReceipt.paymentType === 'Payment' ? 'નાણાં સ્વીકારનારની સહી' : 'નાણાં આપનારની સહી'}
+                  </div>
+                </div>
+                <div style={{ textAlign: "center", width: "45%" }}>
+                  <div style={{ borderTop: "1px solid #000", paddingTop: "4px", fontWeight: "bold" }}>
+                    For {voucherSettings.firmName || "દર્શન સીડ્સ ઇન્ડસ્ટ્રીઝ"}<br/>
+                    (અધિકૃત સહી)
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ACTION BUTTONS (HIDE ON PRINT) */}
+            <div className="hide-on-print" style={{ display: "flex", gap: "0.75rem", marginTop: "1.2rem" }}>
+              <button
+                type="button"
+                onClick={handlePrintPaymentReceipt}
+                className="btn btn-primary"
+                style={{ flex: 1, padding: "0.65rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
+              >
+                <Printer size={16} /> પ્રિન્ટ પહોંચ (A5)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSharePaymentWhatsApp(selectedPaymentReceipt)}
+                className="btn"
+                style={{ flex: 1, padding: "0.65rem", background: "#25D366", color: "white", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
+              >
+                <Share2 size={16} /> WhatsApp શેર
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowPaymentReceiptModal(false)}
+                className="btn btn-outline"
+                style={{ padding: "0.65rem 1rem" }}
+              >
+                બંધ કરો
+              </button>
             </div>
           </div>
         </div>
