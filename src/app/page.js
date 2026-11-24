@@ -1155,13 +1155,22 @@ export default function Home() {
                   <div className="payment-box">
                     <div className="payment-box-title">🏦 ચેક (CHEQUE)</div>
                     <input type="number" className="form-input" name="chequeAmount" value={paymentData.chequeAmount} onChange={handlePaymentChange} placeholder="રકમ (₹)" style={{ fontSize: "1.2rem", padding: "0.85rem", marginBottom: "0.6rem", background: "rgba(16, 185, 129, 0.05)", fontWeight: "bold" }} />
-                    <div className="grid-responsive-2" style={{ gap: "0.5rem", marginBottom: "0.5rem" }}>
-                      <input type="text" className="form-input" disabled value={voucherSettings.bankName || 'Bank name'} style={{ background: "rgba(0,0,0,0.02)", color: "var(--text-muted)" }} />
-                      <input type="tel" inputMode="numeric" pattern="[0-9]*" className="form-input" name="chequeNumber" value={paymentData.chequeNumber} onChange={handlePaymentChange} placeholder="ચેક નંબર (Cheque #)" />
+                    
+                    {/* CHEQUE NUMBER AND DATE SIDE BY SIDE */}
+                    <div className="grid-equal-2" style={{ gap: "0.5rem", marginBottom: "0.5rem" }}>
+                      <div>
+                        <label className="form-label" style={{ fontSize: "0.78rem", marginBottom: "2px", fontWeight: "600" }}>ચેક નંબર:</label>
+                        <input type="tel" inputMode="numeric" pattern="[0-9]*" className="form-input" name="chequeNumber" value={paymentData.chequeNumber} onChange={handlePaymentChange} placeholder="દા.ત. 123456" />
+                      </div>
+                      <div>
+                        <label className="form-label" style={{ fontSize: "0.78rem", marginBottom: "2px", fontWeight: "600" }}>📅 તારીખ:</label>
+                        <input type="date" className="form-input" name="chequeDate" value={paymentData.chequeDate || formData.date} onChange={handlePaymentChange} />
+                      </div>
                     </div>
+
+                    {/* BANK NAME SHIFTED BELOW */}
                     <div>
-                      <label className="form-label" style={{ fontSize: "0.78rem", marginBottom: "2px", fontWeight: "600" }}>📅 ચેકની તારીખ (Cheque Date):</label>
-                      <input type="date" className="form-input" name="chequeDate" value={paymentData.chequeDate || formData.date} onChange={handlePaymentChange} style={{ padding: "0.45rem 0.65rem", fontSize: "0.95rem" }} />
+                      <input type="text" className="form-input" disabled value={`🏦 ${voucherSettings.bankName || 'ICICI Bank'}`} style={{ background: "rgba(0,0,0,0.02)", color: "var(--text-muted)", fontSize: "0.85rem", padding: "0.45rem 0.65rem" }} title="બેંકનું નામ" />
                     </div>
                   </div>
                 </div>
@@ -1577,22 +1586,26 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="grid-equal-2">
-                <div className="form-group">
+              <div className="grid-equal-2" style={{ gap: "0.6rem" }}>
+                <div className="form-group" style={{ marginBottom: "0.4rem" }}>
                   <label className="form-label">રોકડ (Cash)</label>
                   <input type="number" className="form-input" name="cashAmount" value={paymentData.cashAmount} onChange={handlePaymentChange} placeholder="0" />
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: "0.4rem" }}>
                   <label className="form-label">ચેક (Cheque Amt)</label>
                   <input type="number" className="form-input" name="chequeAmount" value={paymentData.chequeAmount} onChange={handlePaymentChange} placeholder="0" />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">ચેક નંબર {voucherSettings.bankName && `(${voucherSettings.bankName})`}</label>
+                <div className="form-group" style={{ marginBottom: "0.4rem" }}>
+                  <label className="form-label">ચેક નંબર</label>
                   <input type="tel" inputMode="numeric" pattern="[0-9]*" className="form-input" name="chequeNumber" value={paymentData.chequeNumber} onChange={handlePaymentChange} placeholder="દા.ત. 123456" />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">ચેકની તારીખ (Cheque Date)</label>
+                <div className="form-group" style={{ marginBottom: "0.4rem" }}>
+                  <label className="form-label">📅 ચેકની તારીખ</label>
                   <input type="date" className="form-input" name="chequeDate" value={paymentData.chequeDate || formData.date} onChange={handlePaymentChange} />
+                </div>
+                <div className="form-group" style={{ gridColumn: "span 2", marginBottom: "0.4rem" }}>
+                  <label className="form-label">બેંકનું નામ (Bank Name)</label>
+                  <input type="text" className="form-input" disabled value={voucherSettings.bankName || 'ICICI Bank'} style={{ background: "rgba(0,0,0,0.02)", color: "var(--text-muted)", fontSize: "0.88rem" }} />
                 </div>
               </div>
 
