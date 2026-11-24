@@ -1295,22 +1295,22 @@ input[type="number"] {
   }
 }
 
-.desinama-col-udhar {
+.desinama-col-jama {
   padding: 1.25rem;
-  background: #fafcf9;
+  background: #ffffff;
   border-bottom: 2px solid var(--surface-border);
 }
 
 @media (min-width: 860px) {
-  .desinama-col-udhar {
+  .desinama-col-jama {
     border-bottom: none;
     border-right: 2px dashed rgba(46, 125, 50, 0.25);
   }
 }
 
-.desinama-col-jama {
+.desinama-col-udhar {
   padding: 1.25rem;
-  background: #ffffff;
+  background: #fafcf9;
 }
 
 .desinama-col-header {
@@ -1371,11 +1371,11 @@ input[type="number"] {
   .desinama-grid {
     grid-template-columns: 1fr 1fr !important;
   }
-  .desinama-col-udhar {
+  .desinama-col-jama {
     border-right: 2px solid #333 !important;
     background: transparent !important;
   }
-  .desinama-col-jama {
+  .desinama-col-udhar {
     background: transparent !important;
   }
 }
