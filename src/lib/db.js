@@ -89,7 +89,7 @@ export function formatDbRow(row) {
     netWeight: row.net_weight !== null && row.net_weight !== undefined ? String(row.net_weight) : '',
     deductionGrams: row.deduction_grams !== null && row.deduction_grams !== undefined ? String(row.deduction_grams) : '',
     totalDeduction: row.total_deduction !== null && row.total_deduction !== undefined ? String(row.total_deduction) : '',
-    finalWeight: row.final_weight !== null && row.final_weight !== undefined ? String(row.final_weight) : '',
+    finalWeight: row.final_weight !== null && row.final_weight !== undefined ? String(Math.floor(Number(row.final_weight))) : '',
     purchaseRate: row.purchase_rate !== null && row.purchase_rate !== undefined ? String(row.purchase_rate) : '',
     finalAmount: row.final_amount !== null && row.final_amount !== undefined ? String(row.final_amount) : '',
     status: row.status || 'Pending',

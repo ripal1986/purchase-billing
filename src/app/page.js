@@ -317,17 +317,24 @@ export default function Home() {
 
   const netWeight = formData.items?.reduce((sum, item) => sum + (parseFloat(item.netWeight) || 0), 0) || 0;
   const totalDeduction = formData.items?.reduce((sum, item) => sum + ((parseFloat(item.netWeight) || 0) / 35.0) * ((parseFloat(item.deductionGrams) || 0) / 1000), 0) || 0;
-  const finalWeight = netWeight - totalDeduction;
+  
+  // કપાત બાદ કરતાં પોઈન્ટ પછીની રકમ ધ્યાને લેવાતી નથી (ફક્ત પૂર્ણાંક કિલો)
+  const finalWeight = formData.items?.reduce((sum, item) => {
+    const nw = parseFloat(item.netWeight) || 0;
+    const ded = parseFloat(item.deductionGrams) || 0;
+    const itemEff = Math.floor(Math.max(0, nw - ((nw / 35.0) * (ded / 1000))));
+    return sum + itemEff;
+  }, 0) || 0;
 
   const finalAmount = formData.items?.reduce((sum, item) => {
     const nw = parseFloat(item.netWeight) || 0;
     const ded = parseFloat(item.deductionGrams) || 0;
-    const fw = nw - ((nw / 35.0) * (ded / 1000));
+    const itemEff = Math.floor(Math.max(0, nw - ((nw / 35.0) * (ded / 1000))));
     const pr = parseFloat(item.purchaseRate) || 0;
-    return sum + Math.round((Math.floor(fw) / 20.0) * pr);
+    return sum + Math.round((itemEff / 20.0) * pr);
   }, 0) || 0;
 
-  const purchaseRate = finalWeight > 0 ? (finalAmount / (Math.floor(finalWeight) / 20.0)).toFixed(2) : 0; // Average rate
+  const purchaseRate = finalWeight > 0 ? (finalAmount / (finalWeight / 20.0)).toFixed(2) : 0; // Average rate
 
   useEffect(() => {
     setPaymentData(prev => {
@@ -503,7 +510,7 @@ export default function Home() {
         variety: actualVariety,
         netWeight,
         totalDeduction: totalDeduction.toFixed(2),
-        finalWeight: finalWeight.toFixed(2),
+        finalWeight: finalWeight.toString(),
         finalAmount,
         status: (role === "admin" && isPaid) ? "Completed" : "Pending",
         cashAmount: role === "admin" ? (paymentData.cashAmount !== "" ? paymentData.cashAmount : "0") : "",
@@ -585,7 +592,7 @@ export default function Home() {
         netWeight,
         deductionGrams: "",
         totalDeduction: totalDeduction.toFixed(2),
-        finalWeight: finalWeight.toFixed(2),
+        finalWeight: finalWeight.toString(),
         purchaseRate,
         finalAmount,
         status: isPaid ? "Completed" : "Pending",
@@ -772,7 +779,7 @@ export default function Home() {
       }
 
       if (items.length === 1) {
-        const qty = parseFloat(entry.finalWeight) || parseFloat(items[0].netWeight) || 0;
+        const qty = Math.floor(parseFloat(entry.finalWeight) || parseFloat(items[0].netWeight) || 0);
         let rate20kg = parseFloat(entry.purchaseRate) || parseFloat(items[0].purchaseRate) || 0;
         const rate = rate20kg > 0 ? (rate20kg / 20).toFixed(2) : (qty > 0 && total > 0 ? (total / qty).toFixed(2) : "0.00");
         const itemName = "Magfali";
@@ -802,10 +809,10 @@ export default function Home() {
         items.forEach(it => {
           const deductionGrams = Number(it.deductionGrams) || 0;
           const rawWt = Number(it.netWeight) || 0;
-          const wKg = deductionGrams > 0 ? (rawWt - ((rawWt / 35.0) * (deductionGrams / 1000))) : rawWt;
-          const itemQty = Number(wKg.toFixed(2));
+          const wKg = Math.floor(deductionGrams > 0 ? (rawWt - ((rawWt / 35.0) * (deductionGrams / 1000))) : rawWt);
+          const itemQty = wKg;
           const rate20kg = Number(it.purchaseRate) || 0;
-          const itemAmt = Math.round((Math.floor(wKg) / 20.0) * rate20kg);
+          const itemAmt = Math.round((wKg / 20.0) * rate20kg);
           const rate = rate20kg > 0 ? (rate20kg / 20).toFixed(2) : (itemQty > 0 ? (itemAmt / itemQty).toFixed(2) : "0.00");
           const itemName = "Magfali";
 
@@ -1065,8 +1072,8 @@ export default function Home() {
                 const d = parseFloat(item.deductionGrams) || 0;
                 const r = parseFloat(item.purchaseRate) || 0;
                 const totalDed = (w / 35) * (d / 1000);
-                const finalW = w - totalDed;
-                const amount = (Math.floor(finalW) / 20) * r;
+                const finalW = Math.floor(Math.max(0, w - totalDed));
+                const amount = (finalW / 20) * r;
                 
                 return (
                   <div key={index} className="item-row-premium">
@@ -1080,7 +1087,14 @@ export default function Home() {
                     <input type="number" step="0.01" name="netWeight" value={item.netWeight} onChange={(e) => handleItemChange(index, e)} required placeholder="વજન (કિલો)" />
                     <input type="number" name="deductionGrams" value={item.deductionGrams} onChange={(e) => handleItemChange(index, e)} required placeholder="કપાત (ગ્રામ)" />
                     <input type="number" name="purchaseRate" value={item.purchaseRate} onChange={(e) => handleItemChange(index, e)} required placeholder="Rate (₹/20kg)" />
-                    <div className="amount-col">₹{Math.round(amount).toLocaleString('en-IN')}</div>
+                    <div className="amount-col">
+                      <div>₹{Math.round(amount).toLocaleString('en-IN')}</div>
+                      {finalW > 0 && d > 0 && (
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: "normal" }}>
+                          ({finalW} kg અસરકારક)
+                        </div>
+                      )}
+                    </div>
                     {formData.items.length > 1 && (
                       <button type="button" onClick={() => handleRemoveItem(index)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "1.2rem", padding: "0" }}>✖</button>
                     )}
@@ -1091,7 +1105,7 @@ export default function Home() {
               </div>
 </div>
 <div className="total-bar-premium">
-                <div style={{ fontSize: "1rem", fontWeight: "600", opacity: 0.9 }}>{finalWeight.toFixed(2)} KG TOTAL EFFECTIVE WEIGHT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "600", opacity: 0.9 }}>{finalWeight} KG TOTAL EFFECTIVE WEIGHT</div>
                 <div style={{ fontSize: "1.5rem", fontWeight: "800" }}>₹{finalAmount.toLocaleString('en-IN')}</div>
               </div>
             </div>
@@ -1409,7 +1423,7 @@ export default function Home() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <div>{entry.farmerName}{entry.villageName ? ` - ${entry.villageName}` : ''} <small>({entry.variety || (entry.itemsJSON ? (() => { try { const items = JSON.parse(entry.itemsJSON); return items.map(i => i.variety === 'Other' ? i.customVariety : i.variety).filter(Boolean).join(', '); } catch(e) { return ''; } })() : '')})</small></div>
-                      <div style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>વજન: {entry.finalWeight}kg | ₹{Number(entry.finalAmount).toLocaleString()}</div>
+                      <div style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>વજન: {Math.floor(Number(entry.finalWeight))}kg | ₹{Number(entry.finalAmount).toLocaleString()}</div>
                     </div>
                     {role === "admin" && entry.status === "Pending" && (
                       <button onClick={(e) => { e.stopPropagation(); openApprovalModal(entry); }} className="btn btn-primary" style={{ padding: "0.5rem" }}>
@@ -1533,7 +1547,8 @@ export default function Home() {
               ))}
               <button type="button" onClick={handleAddItem} className="btn btn-outline" style={{ marginTop: "1rem", marginBottom: "1rem", width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem" }}><PlusCircle size={18} /> વધુ વજન ઉમેરો</button>
 
-              <div style={{ padding: "1rem", background: "rgba(16, 185, 129, 0.1)", marginBottom: "1.5rem", borderRadius: "8px" }}>
+              <div style={{ padding: "1rem", background: "rgba(16, 185, 129, 0.1)", marginBottom: "1.5rem", borderRadius: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                <span>અસરકારક વજન: <strong style={{ fontSize: "1.15rem", color: "var(--text-main)" }}>{finalWeight} kg</strong></span>
                 <span>ફાઈનલ રકમ: <strong style={{ fontSize: "1.4rem", color: "var(--success)" }}>₹ {finalAmount.toLocaleString('en-IN')}</strong></span>
               </div>
 
@@ -1676,7 +1691,7 @@ export default function Home() {
 
         reportDayEntries.forEach((entry) => {
           const finalAmt = parseFloat(entry.finalAmount) || 0;
-          const finalWt = parseFloat(entry.finalWeight) || 0;
+          const finalWt = Math.floor(parseFloat(entry.finalWeight) || 0);
           const cashAmt = parseFloat(entry.cashAmount) || 0;
           const chequeAmt = parseFloat(entry.chequeAmount) || 0;
           const paidTotal = cashAmt + chequeAmt;
@@ -2184,7 +2199,7 @@ export default function Home() {
                                 ₹{item.finalAmount.toLocaleString('en-IN')}
                               </td>
                               <td style={{ fontWeight: "700", color: "#15803d" }}>
-                                {item.finalWeight} kg <span style={{ fontWeight: "normal", fontSize: "0.8rem", color: "var(--text-muted)" }}>({(item.finalWeight/20).toFixed(1)} મણ)</span>
+                                {Math.floor(item.finalWeight)} kg <span style={{ fontWeight: "normal", fontSize: "0.8rem", color: "var(--text-muted)" }}>({(Math.floor(item.finalWeight)/20).toFixed(1)} મણ)</span>
                               </td>
                               <td style={{ textAlign: "right" }}>
                                 <span style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginRight: "3px" }}>#{item.voucherId}</span>
@@ -2201,7 +2216,7 @@ export default function Home() {
                       <div className="chopdo-col-footer">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.88rem", marginBottom: "4px", flexWrap: "wrap", gap: "4px" }}>
                           <span style={{ color: "var(--text-muted)" }}>
-                            કુલ મગફળી વજન: <strong style={{ color: "#15803d" }}>{reportTotalWeight.toFixed(2)} KG ({(reportTotalWeight/20).toFixed(1)} મણ)</strong>
+                            કુલ મગફળી વજન: <strong style={{ color: "#15803d" }}>{Math.floor(reportTotalWeight)} KG ({(Math.floor(reportTotalWeight)/20).toFixed(1)} મણ)</strong>
                           </span>
                           <span style={{ background: "#fef3c7", color: "#b45309", padding: "1px 8px", borderRadius: "4px", fontWeight: "800", fontSize: "0.85rem", border: "1px solid #fde68a" }}>
                             દળો: ₹{reportDalo}/૨૦kg
@@ -2423,7 +2438,7 @@ export default function Home() {
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>તારીખ:</span><strong>{selectedEntry.date}</strong></div>
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>ખેડૂતનું નામ:</span><strong>{selectedEntry.farmerName}{selectedEntry.villageName ? ` - ${selectedEntry.villageName}` : ''}</strong></div>
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>નેટ વજન:</span><strong>{selectedEntry.netWeight} kg</strong></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span>ફાઇનલ વજન:</span><strong>{selectedEntry.finalWeight} kg</strong></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span>ફાઇનલ વજન:</span><strong>{Math.floor(Number(selectedEntry.finalWeight))} kg</strong></div>
               <div style={{ display: "flex", justifyContent: "space-between" }}><span>રકમ:</span><strong style={{ color: "var(--success)" }}>₹ {selectedEntry.finalAmount}</strong></div>
               {parseFloat(selectedEntry.chequeAmount) > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem" }}>
@@ -2563,14 +2578,14 @@ export default function Home() {
 
                             const deductionGrams = Number(it.deductionGrams) || 0;
                             const rawWt = Number(it.netWeight) || 0;
-                            const wKg = rawWt - ((rawWt / 35.0) * (deductionGrams / 1000));
-                            const amt = Math.round((Math.floor(wKg) / 20.0) * Number(it.purchaseRate));
+                            const wKg = Math.floor(rawWt - ((rawWt / 35.0) * (deductionGrams / 1000)));
+                            const amt = Math.round((wKg / 20.0) * Number(it.purchaseRate));
 
                             return (
                               <tr key={idx} style={{ height: "20pt" }}>
                                 <td className="px-2 text-center font-medium" style={{ paddingTop: '4px', paddingBottom: '4px', border: "none" }}>{idx + 1}</td>
                                 <td className="px-2 font-bold" style={{ paddingTop: '4px', paddingBottom: '4px', border: "none" }}>મગફળી ({it.variety})</td>
-                                <td className="px-2 text-right tabular-nums font-semibold" style={{ paddingTop: '4px', paddingBottom: '4px', border: "none" }}>{wKg.toFixed(2)}</td>
+                                <td className="px-2 text-right tabular-nums font-semibold" style={{ paddingTop: '4px', paddingBottom: '4px', border: "none" }}>{wKg}</td>
                                 <td className="px-2 text-right tabular-nums font-semibold" style={{ paddingTop: '4px', paddingBottom: '4px', border: "none" }}>{Number(it.purchaseRate).toFixed(2)}</td>
                                 <td className="px-2 text-right font-bold tabular-nums text-sm" style={{ paddingTop: '4px', paddingBottom: '4px', border: "none" }}>{amt.toLocaleString("en-IN")}</td>
                               </tr>
@@ -2764,7 +2779,7 @@ export default function Home() {
                         <tr key={idx} style={{ height: "18pt", textAlign: "center", fontWeight: "bold", fontSize: "12pt" }}>
                           <td style={{ border: "1px solid #000", padding: "1px", textAlign: "left", borderTop: idx===0?"1px solid #000":"none", borderBottom:"none" }}>મગફળી ({it.variety})</td>
                           <td colSpan="3" style={{ borderLeft: "1px solid #000", borderRight: "1px solid #000", borderTop: idx===0?"1px solid #000":"none", borderBottom: "none", padding: "1px" }}>
-                            {wKg}.000
+                            {wKg}
                           </td>
                           <td style={{ borderLeft: "1px solid #000", borderRight: "1px solid #000", borderTop: idx===0?"1px solid #000":"none", borderBottom: "none", padding: "1px" }}>{rRs}</td>
                           <td style={{ borderLeft: "1px solid #000", borderRight: "1px solid #000", borderTop: idx===0?"1px solid #000":"none", borderBottom: "none", padding: "1px" }}>{rPs || '00'}</td>

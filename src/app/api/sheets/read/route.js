@@ -127,7 +127,7 @@ export async function GET(request) {
           netWeight: row[5] || "",
           deductionGrams: row[6] || "",
           totalDeduction: row[7] || "",
-          finalWeight: row[8] || "",
+          finalWeight: row[8] ? String(Math.floor(parseFloat(row[8]) || 0)) : "",
           purchaseRate: row[9] || "",
           finalAmount: row[10] || "",
           status: row[11] || "Pending",
