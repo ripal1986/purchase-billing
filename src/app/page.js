@@ -2445,8 +2445,11 @@ export default function Home() {
           return (finalAmt - (cashAmt + chequeAmt)) > 0;
         });
 
-        // Compute unique farmer names for autocomplete
-        const uniqueFarmers = Array.from(new Set(recentEntries.map(e => e.farmerName).filter(Boolean)));
+        // Compute unique farmer / party names for autocomplete
+        const uniqueFarmers = Array.from(new Set([
+          ...recentEntries.map(e => e.farmerName),
+          ...paymentsList.map(p => p.partyName)
+        ].filter(Boolean)));
 
         // Filter payments in history tab
         const filteredPayments = paymentsList.filter(p => {
@@ -2586,71 +2589,29 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* PARTY NAME & VILLAGE */}
-                  <div className="grid-equal-2" style={{ marginBottom: "1rem" }}>
-                    <div className="form-group">
-                      <label className="form-label">શ્રી પાર્ટી / ખેડૂત / ખાતાનું નામ *</label>
-                      <input
-                        type="text"
-                        list="farmer-suggestions"
-                        className="form-input"
-                        placeholder="નામ લખો અથવા નીચેથી પસંદ કરો"
-                        value={paymentForm.partyName}
-                        onChange={(e) => {
-                          const name = e.target.value;
-                          const matched = recentEntries.find(entry => entry.farmerName === name);
-                          setPaymentForm(prev => ({
-                            ...prev,
-                            partyName: name,
-                            villageName: matched ? (matched.villageName || prev.villageName) : prev.villageName,
-                            mobileNumber: matched ? (matched.mobileNumber || prev.mobileNumber) : prev.mobileNumber
-                          }));
-                        }}
-                        required
-                      />
-                      <datalist id="farmer-suggestions">
-                        {uniqueFarmers.map((fn, i) => (
-                          <option key={i} value={fn} />
-                        ))}
-                      </datalist>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">ગામનું નામ (Village)</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="ગામ"
-                        value={paymentForm.villageName}
-                        onChange={(e) => setPaymentForm({ ...paymentForm, villageName: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* MOBILE & REFERENCE BILL */}
-                  <div className="grid-equal-2" style={{ marginBottom: "1rem" }}>
-                    <div className="form-group">
-                      <label className="form-label">મોબાઈલ નંબર</label>
-                      <input
-                        type="tel"
-                        maxLength="10"
-                        className="form-input"
-                        placeholder="૧૦ આંકડાનો મોબાઈલ"
-                        value={paymentForm.mobileNumber}
-                        onChange={(e) => setPaymentForm({ ...paymentForm, mobileNumber: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">સંદર્ભ ખરીદી બિલ નં (વિકલ્પ)</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="દા.ત. 101"
-                        value={paymentForm.referenceBillNo}
-                        onChange={(e) => setPaymentForm({ ...paymentForm, referenceBillNo: e.target.value })}
-                      />
-                    </div>
+                  {/* PARTY NAME */}
+                  <div className="form-group" style={{ marginBottom: "1rem" }}>
+                    <label className="form-label">શ્રી પાર્ટી / ખેડૂત / ખાતાનું નામ *</label>
+                    <input
+                      type="text"
+                      list="farmer-suggestions"
+                      className="form-input"
+                      placeholder="નામ લખો અથવા નીચેથી પસંદ કરો"
+                      value={paymentForm.partyName}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        setPaymentForm(prev => ({
+                          ...prev,
+                          partyName: name
+                        }));
+                      }}
+                      required
+                    />
+                    <datalist id="farmer-suggestions">
+                      {uniqueFarmers.map((fn, i) => (
+                        <option key={i} value={fn} />
+                      ))}
+                    </datalist>
                   </div>
 
                   {/* AMOUNT BOX */}
