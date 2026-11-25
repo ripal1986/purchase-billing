@@ -445,7 +445,7 @@ export default function Home() {
   const fetchRecentEntries = async (forceAll = false) => {
     setIsLoadingRecent(true);
     try {
-      let url = '/api/sheets/read?tab=' + activeTab + '&limit=30';
+      let url = '/api/sheets/read?tab=' + activeTab + '&limit=' + ((activeTab === 'report' || activeTab === 'payment' || activeTab === 'pending') ? '300' : '50');
       if (activeTab === 'dashboard') {
          const d = new Date();
          const currentYear = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;

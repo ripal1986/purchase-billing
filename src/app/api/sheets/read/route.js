@@ -62,8 +62,11 @@ export async function GET(request) {
       if (neonRows && neonRows.length > 0) {
         let allData = neonRows.map(formatDbRow);
 
-        // Sort by dailyPurchaseId descending (numeric aware)
+        // Sort by normalized date descending, then dailyPurchaseId descending
         allData.sort((a, b) => {
+          const dateA = normalizeToYMD(a.date, a.sheetName) || '';
+          const dateB = normalizeToYMD(b.date, b.sheetName) || '';
+          if (dateA !== dateB) return dateB.localeCompare(dateA);
           const numA = parseInt(a.dailyPurchaseId, 10);
           const numB = parseInt(b.dailyPurchaseId, 10);
           if (!isNaN(numA) && !isNaN(numB)) {
@@ -114,7 +117,8 @@ export async function GET(request) {
       
       for (let i = startIndex; i < rows.length; i++) {
         const rawRow = rows[i];
-        const row = (!rawRow[0] && rawRow[18]) ? rawRow.slice(18) : rawRow;
+        const isShifted = !rawRow[0] && !rawRow[1] && !rawRow[3] && rawRow.length > 19;
+        const row = isShifted ? rawRow.slice(18) : rawRow;
         formattedData.push({
           sheetName: sheetName,
           purchaseType: (sheetName === 'APMC' || sheetName === 'Sheet1') ? 'APMC' : 'Direct',
