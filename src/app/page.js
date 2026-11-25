@@ -2178,24 +2178,11 @@ export default function Home() {
             </div>
 
             {/* CHOPDO CONTAINER */}
-            <div className="chopdo-container" id="chopdo-print-area">
+            <div className="chopdo-container" id="chopdo-print-area" style={{ border: "2px solid #1e293b" }}>
               {/* CHOPDO HEADER */}
-              <div className="chopdo-header">
-                <div>
-                  <span style={{ color: "#b91c1c", fontWeight: "800", fontSize: "0.92rem", marginRight: "0.75rem" }}>
-                    ॥ શ્રી ગણેશાય નમઃ ॥
-                  </span>
-                  <span style={{ fontSize: "1.05rem", fontWeight: "800", color: "#1e293b" }}>
-                    🌾 {voucherSettings.firmName || "દર્શન સીડ્સ ઇન્ડસ્ટ્રીઝ"} - દૈનિક રોજમેળ
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", fontSize: "0.85rem" }}>
-                  <span>
-                    <strong>તારીખ:</strong> {reportDate ? reportDate.split('-').reverse().join('/') : 'બધા દિવસો'}
-                  </span>
-                  <span style={{ background: "#e2e8f0", padding: "2px 8px", borderRadius: "12px", fontWeight: "700" }}>
-                    કુલ બિલ: {reportDayEntries.length}
-                  </span>
+              <div className="chopdo-header" style={{ background: "linear-gradient(to bottom, #fef9c3, #fef3c7)", borderBottom: "2px solid #1e293b", justifyContent: "center", textAlign: "center", flexDirection: "column", gap: "2px", padding: "0.6rem 1rem" }}>
+                <div style={{ fontSize: "1.02rem", fontWeight: "800", color: "#0f172a" }}>
+                  ॥ શ્રી ગણેશાય નમઃ ॥ &nbsp; 🌾 {voucherSettings.firmName || "દર્શન સીડ્સ ઇન્ડસ્ટ્રીઝ"} &nbsp; — &nbsp; તારીખ: {reportDate ? reportDate.split('-').reverse().join('/') : 'બધા દિવસો'} &nbsp; (કુલ બિલ: {reportDayEntries.length})
                 </div>
               </div>
 
@@ -2216,211 +2203,200 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  {/* 2-COLUMN CHOPDO GRID: LEFT IS JAMA, RIGHT IS UDHAR */}
+                  {/* 2 EQUAL HALVES: LEFT 4-COL JAMA, RIGHT 4-COL UDHAR */}
                   <div className="chopdo-grid">
                     
-                    {/* LEFT COLUMN: 🟢 જમા પક્ષ (બેંક, રોકડ અને બાકી) */}
+                    {/* LEFT HALF (4 EQUAL COLUMNS): 🟢 જમા પક્ષ */}
                     <div className="chopdo-col-jama">
-                      <div className="chopdo-subhead" style={{ borderLeft: "4px solid #16a34a" }}>
-                        <span style={{ color: "#166534" }}>🟢 જમા પક્ષ</span>
-                        <span style={{ fontSize: "0.85rem", color: "#166534" }}>
-                          કુલ જમા: ₹{totalJamaAmount.toLocaleString('en-IN')}
+                      <div className="chopdo-subhead">
+                        <span style={{ color: "#166534" }}>॥ જમા પક્ષ (Jama) ॥</span>
+                        <span style={{ fontSize: "0.78rem", background: "#f1f5f9", padding: "2px 8px", borderRadius: "12px", border: "1px solid #cbd5e1", color: "#334155" }}>
+                          {chequeList.length + cashList.length + bakiList.length} એન્ટ્રી
                         </span>
                       </div>
 
-                      {/* 1. BANK CHEQUE ENTRIES */}
-                      {(reportPaymentFilter === 'all' || reportPaymentFilter === 'cheque') && (
-                        <div>
-                          <div style={{ background: "#eff6ff", padding: "0.35rem 0.75rem", fontSize: "0.85rem", fontWeight: "700", color: "#1d4ed8", borderBottom: "1px solid #bfdbfe", display: "flex", justifyContent: "space-between" }}>
-                            <span>🏦 શ્રી {primaryBankName} ખાતે (ચેક)</span>
-                            <span>₹{reportTotalChequePaid.toLocaleString('en-IN')} ({chequeList.length})</span>
-                          </div>
+                      {/* 4-COLUMN SUB-HEADER */}
+                      <div className="chopdo-col-header-4">
+                        <div>ખાતા ટોટલ</div>
+                        <div style={{ textAlign: "right", paddingRight: "0.45rem" }}>પેટા રકમ</div>
+                        <div style={{ gridColumn: "3 / 5", paddingLeft: "0.4rem" }}>ખાતું / વિગત</div>
+                      </div>
 
-                          {chequeList.length === 0 ? (
-                            <div style={{ padding: "0.4rem 0.75rem", fontSize: "0.82rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-                              ચેક ચૂકવણી નથી.
+                      <div className="chopdo-side-body">
+                        {/* 1. BANK CHEQUE HEAD + SUB-ENTRIES */}
+                        {(reportPaymentFilter === 'all' || reportPaymentFilter === 'cheque') && chequeList.length > 0 && (
+                          <div>
+                            <div className="chopdo-row-4col chopdo-head-row" style={{ borderLeftColor: "#1d4ed8" }}>
+                              <div className="chopdo-head-amt" style={{ color: "#1d4ed8" }}>
+                                ₹{reportTotalChequePaid.toLocaleString('en-IN')}
+                              </div>
+                              <div className="chopdo-head-title" style={{ color: "#1e3a8a" }}>
+                                <span>🏦 શ્રી {primaryBankName} ખાતે</span>
+                                <span style={{ fontSize: "0.72rem", fontWeight: "700", color: "#3b82f6" }}>({chequeList.length} ચેક)</span>
+                              </div>
                             </div>
-                          ) : (
-                            <table className="chopdo-table">
-                              <thead>
-                                <tr>
-                                  <th style={{ width: "42%" }}>રકમ (₹)</th>
-                                  <th style={{ width: "38%" }}>ચેક નં.</th>
-                                  <th style={{ width: "20%", textAlign: "right" }}>બિલ</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {chequeList.map((item, idx) => (
-                                  <tr key={idx}>
-                                    <td style={{ fontWeight: "700", color: "#1d4ed8" }}>
-                                      ₹{item.amount.toLocaleString('en-IN')}
-                                    </td>
-                                    <td style={{ fontWeight: "700", color: "#1e293b" }}>
-                                      {item.chequeNumber || '—'}
-                                      {item.chequeDate && (
-                                        <div style={{ fontSize: "0.72rem", fontWeight: "normal", color: "var(--text-muted)" }}>
-                                          તા: {item.chequeDate.split('-').reverse().join('/')}
-                                        </div>
-                                      )}
-                                    </td>
-                                    <td style={{ textAlign: "right", color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                                      #{item.voucherId}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
-                        </div>
-                      )}
 
-                      {/* 2. CASH ENTRIES */}
-                      {(reportPaymentFilter === 'all' || reportPaymentFilter === 'cash') && (
-                        <div>
-                          <div style={{ background: "#ecfdf5", padding: "0.35rem 0.75rem", fontSize: "0.85rem", fontWeight: "700", color: "#059669", borderBottom: "1px solid #a7f3d0", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between" }}>
-                            <span>💵 શ્રી રોકડ ખાતે (રોકડ)</span>
-                            <span>₹{reportTotalCashPaid.toLocaleString('en-IN')} ({cashList.length})</span>
+                            {chequeList.map((item, idx) => (
+                              <div key={idx} className="chopdo-row-4col chopdo-sub-row">
+                                <div className="chopdo-sub-amt" style={{ color: "#1d4ed8" }}>
+                                  ₹{item.amount.toLocaleString('en-IN')}
+                                </div>
+                                <div className="chopdo-sub-desc">
+                                  ચેક નં: <strong>{item.chequeNumber || '—'}</strong>
+                                  {item.chequeDate && <span> • તા: {item.chequeDate.split('-').reverse().join('/')}</span>}
+                                  <span style={{ color: "#64748b" }}> (#{item.voucherId})</span>
+                                </div>
+                              </div>
+                            ))}
                           </div>
+                        )}
 
-                          {cashList.length === 0 ? (
-                            <div style={{ padding: "0.4rem 0.75rem", fontSize: "0.82rem", color: "var(--text-muted)", fontStyle: "italic" }}>
-                              રોકડ ચૂકવણી નથી.
+                        {/* 2. CASH HEAD + SUB-ENTRIES */}
+                        {(reportPaymentFilter === 'all' || reportPaymentFilter === 'cash') && cashList.length > 0 && (
+                          <div>
+                            {chequeList.length > 0 && reportPaymentFilter === 'all' && <div className="chopdo-head-divider" />}
+                            <div className="chopdo-row-4col chopdo-head-row" style={{ borderLeftColor: "#059669" }}>
+                              <div className="chopdo-head-amt" style={{ color: "#059669" }}>
+                                ₹{reportTotalCashPaid.toLocaleString('en-IN')}
+                              </div>
+                              <div className="chopdo-head-title" style={{ color: "#065f46" }}>
+                                <span>💵 શ્રી રોકડ ખાતે</span>
+                                <span style={{ fontSize: "0.72rem", fontWeight: "700", color: "#10b981" }}>({cashList.length} એન્ટ્રી)</span>
+                              </div>
                             </div>
-                          ) : (
-                            <table className="chopdo-table">
-                              <thead>
-                                <tr>
-                                  <th style={{ width: "42%" }}>રકમ (₹)</th>
-                                  <th style={{ width: "38%" }}>વિગત</th>
-                                  <th style={{ width: "20%", textAlign: "right" }}>બિલ</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {cashList.map((item, idx) => (
-                                  <tr key={idx}>
-                                    <td style={{ fontWeight: "700", color: "#059669" }}>
-                                      ₹{item.amount.toLocaleString('en-IN')}
-                                    </td>
-                                    <td style={{ color: "#059669" }}>રોકડ ચૂકવણી</td>
-                                    <td style={{ textAlign: "right", color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                                      #{item.voucherId}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
-                        </div>
-                      )}
 
-                      {/* 3. BAKI ENTRIES: ONLY IF UNPAID PARTIES EXIST */}
-                      {bakiList.length > 0 && (reportPaymentFilter === 'all' || reportPaymentFilter === 'baki') && (
-                        <div style={{ borderTop: "1px solid #cbd5e1" }}>
-                          <table className="chopdo-table">
-                            <tbody>
-                              {bakiList.map((item, idx) => (
-                                <tr key={idx} style={{ background: "#fff5f5" }}>
-                                  <td style={{ width: "42%", fontWeight: "800", color: "#dc2626" }}>
-                                    ₹{item.amount.toLocaleString('en-IN')}
-                                  </td>
-                                  <td style={{ width: "38%", fontWeight: "700", color: "#991b1b" }}>
+                            {cashList.map((item, idx) => (
+                              <div key={idx} className="chopdo-row-4col chopdo-sub-row">
+                                <div className="chopdo-sub-amt" style={{ color: "#059669" }}>
+                                  ₹{item.amount.toLocaleString('en-IN')}
+                                </div>
+                                <div className="chopdo-sub-desc">
+                                  રોકડ ચૂકવણી <span style={{ color: "#64748b" }}>(બિલ #{item.voucherId})</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 3. BAKI PARTIES: ONLY IF UNPAID PARTIES EXIST */}
+                        {bakiList.length > 0 && (reportPaymentFilter === 'all' || reportPaymentFilter === 'baki') && (
+                          <div>
+                            {(chequeList.length > 0 || cashList.length > 0) && reportPaymentFilter === 'all' && <div className="chopdo-head-divider" />}
+                            {bakiList.map((item, idx) => (
+                              <div key={idx} className="chopdo-row-4col chopdo-head-row" style={{ background: "#fef2f2", borderLeftColor: "#dc2626" }}>
+                                <div className="chopdo-head-amt" style={{ color: "#dc2626" }}>
+                                  ₹{item.amount.toLocaleString('en-IN')}
+                                </div>
+                                <div className="chopdo-head-title" style={{ color: "#991b1b" }}>
+                                  <span>
                                     શ્રી {item.farmerName} ખાતે જમા
                                     {item.villageName && <span style={{ fontWeight: "normal", fontSize: "0.75rem", color: "#7f1d1d" }}> ({item.villageName})</span>}
-                                  </td>
-                                  <td style={{ width: "20%", textAlign: "right" }}>
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "4px" }}>
-                                      <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>#{item.voucherId}</span>
-                                      {role === 'admin' && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleQuickPayBaki(item)}
-                                          className="btn btn-outline hide-on-print"
-                                          style={{ padding: "1px 5px", fontSize: "0.68rem", borderColor: "#dc2626", color: "#dc2626" }}
-                                          title="પેમેન્ટ કરો"
-                                        >
-                                          ચૂકવો
-                                        </button>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                      {bakiList.length === 0 && reportPaymentFilter === 'baki' && (
-                        <div style={{ padding: "1rem", textAlign: "center", color: "#166534", background: "#f0fdf4" }}>
-                          ✅ કોઈ બાકી નથી (તમામ પેમેન્ટ પૂર્ણ ચૂકતે).
-                        </div>
-                      )}
+                                    <span style={{ fontWeight: "normal", fontSize: "0.75rem", color: "#64748b" }}> #{item.voucherId}</span>
+                                  </span>
+                                  {role === 'admin' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuickPayBaki(item)}
+                                      className="btn btn-outline hide-on-print"
+                                      style={{ padding: "1px 6px", fontSize: "0.68rem", borderColor: "#dc2626", color: "#dc2626" }}
+                                      title="પેમેન્ટ કરો"
+                                    >
+                                      ચૂકવો
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {bakiList.length === 0 && reportPaymentFilter === 'baki' && (
+                          <div style={{ padding: "1rem", textAlign: "center", color: "#166534", background: "#f0fdf4", margin: "0.5rem" }}>
+                            ✅ કોઈ બાકી નથી (તમામ પેમેન્ટ પૂર્ણ ચૂકતે).
+                          </div>
+                        )}
+                      </div>
 
-                      {/* LEFT COLUMN FOOTER */}
-                      <div className="chopdo-col-footer">
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "2px" }}>
-                          <span>
-                            ચેક: ₹{reportTotalChequePaid.toLocaleString('en-IN')} | રોકડ: ₹{reportTotalCashPaid.toLocaleString('en-IN')}
-                            {reportTotalBakiAmount > 0 ? ` | બાકી: ₹${reportTotalBakiAmount.toLocaleString('en-IN')}` : ''}
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.05rem", fontWeight: "800", color: "#166534", borderTop: "1px solid #cbd5e1", paddingTop: "4px" }}>
-                          <span>કુલ જમા રકમ:</span>
-                          <span>₹{totalJamaAmount.toLocaleString('en-IN')}</span>
+                      {/* LEFT HALF FOOTER (ALIGNED TO 4-COL) */}
+                      <div className="chopdo-col-footer" style={{ padding: "0.45rem 0.35rem" }}>
+                        <div className="chopdo-row-4col">
+                          <div style={{ fontSize: "0.95rem", fontWeight: "900", color: "#166534", textDecoration: "underline", textDecorationStyle: "double" }}>
+                            ₹{totalJamaAmount.toLocaleString('en-IN')}
+                          </div>
+                          <div style={{ gridColumn: "2 / 5", textAlign: "right", fontSize: "0.88rem", color: "#166534" }}>
+                            કુલ જમા રકમ
+                            <div style={{ fontSize: "0.72rem", fontWeight: "600", color: "var(--text-muted)" }}>
+                              ચેક: ₹{reportTotalChequePaid.toLocaleString('en-IN')} | રોકડ: ₹{reportTotalCashPaid.toLocaleString('en-IN')}
+                              {reportTotalBakiAmount > 0 ? ` | બાકી: ₹${reportTotalBakiAmount.toLocaleString('en-IN')}` : ''}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* RIGHT COLUMN: 🔴 ઉધાર પક્ષ (શ્રી મગફળી ખરીદ ખાતે) */}
+                    {/* RIGHT HALF (4 EQUAL COLUMNS): 🔴 ઉધાર પક્ષ */}
                     <div className="chopdo-col-udhar">
-                      <div className="chopdo-subhead" style={{ borderLeft: "4px solid #b91c1c" }}>
-                        <span style={{ color: "#b91c1c" }}>🔴 ઉધાર પક્ષ: શ્રી મગફળી ખરીદ ખાતે</span>
-                        <span style={{ fontSize: "0.85rem", color: "#b91c1c" }}>
-                          {reportPurchaseList.length} બિલ
+                      <div className="chopdo-subhead">
+                        <span style={{ color: "#b91c1c" }}>॥ ઉધાર પક્ષ (Udhar) ॥</span>
+                        <span style={{ fontSize: "0.78rem", background: "#f1f5f9", padding: "2px 8px", borderRadius: "12px", border: "1px solid #cbd5e1", color: "#334155" }}>
+                          {reportPurchaseList.length} એન્ટ્રી
                         </span>
                       </div>
 
-                      {/* SADAAG PURCHASE ENTRIES TABLE */}
-                      <table className="chopdo-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: "38%" }}>રકમ (₹)</th>
-                            <th style={{ width: "42%" }}>મગફળી વજન (મ.કિ.)</th>
-                            <th style={{ width: "20%", textAlign: "right" }}>બિલ</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                      {/* 4-COLUMN SUB-HEADER */}
+                      <div className="chopdo-col-header-4">
+                        <div>ખાતા ટોટલ</div>
+                        <div style={{ textAlign: "right", paddingRight: "0.45rem" }}>પેટા રકમ</div>
+                        <div style={{ gridColumn: "3 / 5", paddingLeft: "0.4rem" }}>ખાતું / વજન વિગત</div>
+                      </div>
+
+                      <div className="chopdo-side-body">
+                        {/* MAGFALI PURCHASE HEAD + SUB-ENTRIES */}
+                        <div>
+                          <div className="chopdo-row-4col chopdo-head-row" style={{ borderLeftColor: "#b91c1c" }}>
+                            <div className="chopdo-head-amt" style={{ color: "#b91c1c" }}>
+                              ₹{reportTotalPurchaseAmount.toLocaleString('en-IN')}
+                            </div>
+                            <div className="chopdo-head-title" style={{ color: "#991b1b" }}>
+                              <span>🌾 શ્રી મગફળી ખરીદ ખાતે</span>
+                              <span style={{ fontSize: "0.72rem", fontWeight: "700", color: "#15803d" }}>
+                                {Math.floor(reportTotalWeight)} kg
+                              </span>
+                            </div>
+                          </div>
+
                           {reportPurchaseList.map((item, idx) => (
-                            <tr key={idx}>
-                              <td style={{ fontWeight: "700", color: "#b91c1c" }}>
+                            <div key={idx} className="chopdo-row-4col chopdo-sub-row">
+                              <div className="chopdo-sub-amt" style={{ color: "#b91c1c" }}>
                                 ₹{item.finalAmount.toLocaleString('en-IN')}
-                              </td>
-                              <td style={{ fontWeight: "700", color: "#15803d" }}>
-                                {Math.floor(item.finalWeight)} kg <span style={{ fontWeight: "normal", fontSize: "0.8rem", color: "var(--text-muted)" }}>({(Math.floor(item.finalWeight)/20).toFixed(1)} મણ)</span>
-                              </td>
-                              <td style={{ textAlign: "right" }}>
-                                <span style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginRight: "3px" }}>#{item.voucherId}</span>
-                                <span style={{ fontSize: "0.68rem", padding: "1px 4px", borderRadius: "3px", background: item.purchaseType === 'APMC' ? '#e0f2fe' : '#fef3c7', color: item.purchaseType === 'APMC' ? '#0369a1' : '#b45309', fontWeight: "bold" }}>
+                              </div>
+                              <div className="chopdo-sub-desc">
+                                <strong style={{ color: "#15803d" }}>{Math.floor(item.finalWeight)} kg</strong>
+                                <span style={{ color: "#64748b" }}> ({(Math.floor(item.finalWeight)/20).toFixed(1)} મણ)</span>
+                                {' '}• #{item.voucherId}{' '}
+                                <span style={{ fontSize: "0.68rem", padding: "0px 4px", borderRadius: "3px", background: item.purchaseType === 'APMC' ? '#e0f2fe' : '#fef3c7', color: item.purchaseType === 'APMC' ? '#0369a1' : '#b45309', fontWeight: "bold" }}>
                                   {item.purchaseType === 'APMC' ? 'APMC' : 'Direct'}
                                 </span>
-                              </td>
-                            </tr>
+                              </div>
+                            </div>
                           ))}
-                        </tbody>
-                      </table>
-
-                      {/* RIGHT COLUMN FOOTER */}
-                      <div className="chopdo-col-footer">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.88rem", marginBottom: "4px", flexWrap: "wrap", gap: "4px" }}>
-                          <span style={{ color: "var(--text-muted)" }}>
-                            કુલ મગફળી વજન: <strong style={{ color: "#15803d" }}>{Math.floor(reportTotalWeight)} KG ({(Math.floor(reportTotalWeight)/20).toFixed(1)} મણ)</strong>
-                          </span>
-                          <span style={{ background: "#fef3c7", color: "#b45309", padding: "1px 8px", borderRadius: "4px", fontWeight: "800", fontSize: "0.85rem", border: "1px solid #fde68a" }}>
-                            દળો: ₹{reportDalo}/૨૦kg
-                          </span>
                         </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.05rem", fontWeight: "800", color: "#b91c1c", borderTop: "1px solid #cbd5e1", paddingTop: "4px" }}>
-                          <span>કુલ ઉધાર રકમ (મગફળી ખરીદી):</span>
-                          <span>₹{reportTotalPurchaseAmount.toLocaleString('en-IN')}</span>
+                      </div>
+
+                      {/* RIGHT HALF FOOTER (ALIGNED TO 4-COL + DALO) */}
+                      <div className="chopdo-col-footer" style={{ padding: "0.45rem 0.35rem" }}>
+                        <div className="chopdo-row-4col">
+                          <div style={{ fontSize: "0.95rem", fontWeight: "900", color: "#b91c1c", textDecoration: "underline", textDecorationStyle: "double" }}>
+                            ₹{reportTotalPurchaseAmount.toLocaleString('en-IN')}
+                          </div>
+                          <div style={{ gridColumn: "2 / 5", textAlign: "right", fontSize: "0.88rem", color: "#b91c1c" }}>
+                            <span>કુલ ઉધાર રકમ</span>
+                            <div style={{ fontSize: "0.76rem", fontWeight: "700", color: "#15803d", marginTop: "1px" }}>
+                              વજન: {Math.floor(reportTotalWeight)} KG ({(Math.floor(reportTotalWeight)/20).toFixed(1)} મણ) &nbsp;|&nbsp;
+                              <span style={{ background: "#fef3c7", color: "#b45309", padding: "0px 5px", borderRadius: "4px", border: "1px solid #fde68a" }}>
+                                દળો: ₹{reportDalo}/૨૦kg
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
