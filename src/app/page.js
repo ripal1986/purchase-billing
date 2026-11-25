@@ -1292,17 +1292,19 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setShowPrintStationModal(true)}
-            className="btn btn-outline"
+            className="btn"
             style={{
-              padding: "0.35rem 0.65rem",
-              fontSize: "0.78rem",
+              padding: "0.4rem 0.75rem",
+              fontSize: "0.8rem",
               display: "flex",
               alignItems: "center",
               gap: "0.35rem",
-              borderColor: printStationActive ? "#16a34a" : "rgba(255,255,255,0.4)",
-              background: printStationActive ? "#dcfce7" : "rgba(255,255,255,0.12)",
-              color: printStationActive ? "#166534" : "#ffffff",
-              fontWeight: "700"
+              border: printStationActive ? "2px solid #16a34a" : "1.5px solid var(--primary)",
+              background: printStationActive ? "#dcfce7" : "#f0fdf4",
+              color: printStationActive ? "#166534" : "var(--primary)",
+              fontWeight: "800",
+              borderRadius: "20px",
+              whiteSpace: "nowrap"
             }}
             title="Remote Print Station (Office PC / Ripal's PC)"
           >
