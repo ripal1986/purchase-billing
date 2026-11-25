@@ -92,6 +92,22 @@ export async function initDb() {
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_party ON payments(party_name);`;
     await sql`CREATE INDEX IF NOT EXISTS idx_payments_type ON payments(payment_type);`;
 
+    // REMOTE PRINT JOBS QUEUE TABLE
+    await sql`
+      CREATE TABLE IF NOT EXISTS print_jobs (
+        id SERIAL PRIMARY KEY,
+        target_device VARCHAR(100) NOT NULL,
+        job_type VARCHAR(50) NOT NULL DEFAULT 'invoice',
+        voucher_id VARCHAR(100),
+        party_name VARCHAR(255),
+        payload_json JSONB NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        printed_at TIMESTAMP WITH TIME ZONE
+      );
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_print_jobs_device_status ON print_jobs(target_device, status);`;
+
     dbInitialized = true;
     return true;
   } catch (err) {

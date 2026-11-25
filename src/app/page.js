@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LayoutDashboard, CheckSquare, ShieldCheck, FileText, Save, Camera, Printer, LogOut, Share2, List, PlusCircle, X, Settings, UserCircle, CheckCircle, Clock, Download, RefreshCw, Edit, CreditCard, Search, Building2, ArrowDownLeft, ArrowUpRight, Wallet, Trash2 } from "lucide-react";
+import { LayoutDashboard, CheckSquare, ShieldCheck, FileText, Save, Camera, Printer, LogOut, Share2, List, PlusCircle, X, Settings, UserCircle, CheckCircle, Clock, Download, RefreshCw, Edit, CreditCard, Search, Building2, ArrowDownLeft, ArrowUpRight, Wallet, Trash2, Monitor } from "lucide-react";
 import "./globals.css";
 
 const numberToWords = (num) => {
@@ -349,6 +349,115 @@ export default function Home() {
       : `whatsapp://send?text=${encodeURIComponent(text)}`;
     window.open(waUrl, '_blank');
   };
+
+  // Remote Print Station State (Office PC / Ripal's PC)
+  const [printStationActive, setPrintStationActive] = useState(false);
+  const [printStationDevice, setPrintStationDevice] = useState("Office PC");
+  const [showPrintStationModal, setShowPrintStationModal] = useState(false);
+  const [remotePrintSending, setRemotePrintSending] = useState("");
+  const [remotePrintToast, setRemotePrintToast] = useState("");
+  const [lastPrintedJobInfo, setLastPrintedJobInfo] = useState(null);
+
+  useEffect(() => {
+    const savedActive = localStorage.getItem("printStationActive") === "true";
+    const savedDevice = localStorage.getItem("printStationDevice");
+    if (savedDevice) setPrintStationDevice(savedDevice);
+    if (savedActive) setPrintStationActive(true);
+  }, []);
+
+  const togglePrintStation = (active, device) => {
+    const targetDev = device || printStationDevice;
+    setPrintStationActive(active);
+    setPrintStationDevice(targetDev);
+    localStorage.setItem("printStationActive", active ? "true" : "false");
+    localStorage.setItem("printStationDevice", targetDev);
+  };
+
+  const sendRemotePrintJob = async (targetDevice, jobType, data) => {
+    if (!data) return;
+    setRemotePrintSending(targetDevice);
+    try {
+      const res = await fetch('/api/print-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetDevice,
+          jobType,
+          voucherId: data.voucherId || data.receiptNo || '',
+          partyName: data.farmerName || data.partyName || '',
+          payload: data
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        setRemotePrintToast(`✅ પ્રિન્ટ "${targetDevice}" પર મોકલી દીધી છે!`);
+        setTimeout(() => setRemotePrintToast(""), 3500);
+      } else {
+        alert("પ્રિન્ટ મોકલવામાં એરર: " + (result.error || ""));
+      }
+    } catch (e) {
+      alert("નેટવર્ક એરર! પ્રિન્ટ મોકલી શકાઈ નથી.");
+    }
+    setRemotePrintSending("");
+  };
+
+  useEffect(() => {
+    if (!printStationActive || !role) return;
+    let isChecking = false;
+
+    const pollJobs = async () => {
+      if (isChecking) return;
+      isChecking = true;
+      try {
+        const res = await fetch(`/api/print-jobs?device=${encodeURIComponent(printStationDevice)}&status=pending`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.jobs) && data.jobs.length > 0) {
+          const job = data.jobs[0];
+          // Mark as printed immediately so it won't double-print
+          await fetch('/api/print-jobs', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: job.id, status: 'printed' })
+          });
+
+          setLastPrintedJobInfo({
+            id: job.id,
+            voucherId: job.voucherId,
+            partyName: job.partyName,
+            jobType: job.jobType,
+            time: new Date().toLocaleTimeString('en-IN')
+          });
+
+          if (job.jobType === 'payment') {
+            setShowInvoiceModal(false);
+            setShowChequeModal(false);
+            setSelectedPaymentReceipt(job.payload);
+            setShowPaymentReceiptModal(true);
+            setTimeout(() => handlePrintPaymentReceipt(), 450);
+          } else if (job.jobType === 'cheque') {
+            setShowInvoiceModal(false);
+            setShowPaymentReceiptModal(false);
+            setLastSavedData(job.payload);
+            setShowChequeModal(true);
+            setTimeout(() => window.print(), 450);
+          } else {
+            setShowChequeModal(false);
+            setShowPaymentReceiptModal(false);
+            setLastSavedData(job.payload);
+            setShowInvoiceModal(true);
+            setTimeout(() => window.print(), 450);
+          }
+        }
+      } catch (e) {
+        console.error("Print Station poll error:", e);
+      }
+      isChecking = false;
+    };
+
+    pollJobs();
+    const timer = setInterval(pollJobs, 3500);
+    return () => clearInterval(timer);
+  }, [printStationActive, printStationDevice, role]);
 
   useEffect(() => {
     if (showChequeModal) {
@@ -1180,6 +1289,26 @@ export default function Home() {
         </nav>
 
         <div className="header-profile">
+          <button
+            type="button"
+            onClick={() => setShowPrintStationModal(true)}
+            className="btn btn-outline"
+            style={{
+              padding: "0.35rem 0.65rem",
+              fontSize: "0.78rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.35rem",
+              borderColor: printStationActive ? "#16a34a" : "rgba(255,255,255,0.4)",
+              background: printStationActive ? "#dcfce7" : "rgba(255,255,255,0.12)",
+              color: printStationActive ? "#166534" : "#ffffff",
+              fontWeight: "700"
+            }}
+            title="Remote Print Station (Office PC / Ripal's PC)"
+          >
+            <Monitor size={15} />
+            <span>{printStationActive ? `🟢 ${printStationDevice}` : "Print PC"}</span>
+          </button>
           <div className="profile-badge">
              
             {loginUsername ? loginUsername : (role === 'admin' ? 'Admin' : 'User')}
@@ -3663,6 +3792,33 @@ export default function Home() {
               }} className="btn" style={{ flex: 1, background: "#25D366", color: "white" }}><Share2 size={18} /> WhatsApp</button>
               <button type="button" onClick={() => window.print()} className="btn btn-primary" style={{ flex: 1 }}><Printer size={18} /> પ્રિન્ટ (A5)</button>
               </div>
+
+              {/* REMOTE PRINT TO OFFICE PC / RIPAL'S PC */}
+              <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  disabled={!!remotePrintSending}
+                  onClick={() => sendRemotePrintJob("Office PC", "invoice", lastSavedData)}
+                  className="btn btn-outline"
+                  style={{ flex: 1, padding: "0.5rem", fontSize: "0.82rem", borderColor: "#0284c7", color: "#0284c7", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}
+                >
+                  <Monitor size={15} /> {remotePrintSending === "Office PC" ? "મોકલી રહ્યા છીએ..." : "Office PC પર પ્રિન્ટ"}
+                </button>
+                <button
+                  type="button"
+                  disabled={!!remotePrintSending}
+                  onClick={() => sendRemotePrintJob("Ripal's PC", "invoice", lastSavedData)}
+                  className="btn btn-outline"
+                  style={{ flex: 1, padding: "0.5rem", fontSize: "0.82rem", borderColor: "#7c3aed", color: "#7c3aed", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}
+                >
+                  <Monitor size={15} /> {remotePrintSending === "Ripal's PC" ? "મોકલી રહ્યા છીએ..." : "Ripal's PC પર પ્રિન્ટ"}
+                </button>
+              </div>
+              {remotePrintToast && (
+                <div style={{ marginTop: "0.5rem", padding: "0.45rem 0.75rem", background: "#dcfce7", color: "#166534", borderRadius: "6px", fontSize: "0.85rem", fontWeight: "700", textAlign: "center" }}>
+                  {remotePrintToast}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -3712,9 +3868,32 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="hide-on-print" style={{ marginTop: "1.5rem", display: "flex", gap: "1rem" }}>
+            <div className="hide-on-print" style={{ marginTop: "1.5rem", display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
               <button type="button" onClick={() => window.print()} className="btn btn-primary" style={{ flex: 1 }}><Printer size={18} /> ચેક પ્રિન્ટ કરો</button>
+              <button
+                type="button"
+                disabled={!!remotePrintSending}
+                onClick={() => sendRemotePrintJob("Office PC", "cheque", lastSavedData)}
+                className="btn btn-outline"
+                style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", borderColor: "#0284c7", color: "#0284c7", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <Monitor size={15} /> Office PC
+              </button>
+              <button
+                type="button"
+                disabled={!!remotePrintSending}
+                onClick={() => sendRemotePrintJob("Ripal's PC", "cheque", lastSavedData)}
+                className="btn btn-outline"
+                style={{ padding: "0.6rem 0.9rem", fontSize: "0.85rem", borderColor: "#7c3aed", color: "#7c3aed", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.35rem" }}
+              >
+                <Monitor size={15} /> Ripal's PC
+              </button>
             </div>
+            {remotePrintToast && (
+              <div className="hide-on-print" style={{ marginTop: "0.5rem", padding: "0.45rem 0.75rem", background: "#dcfce7", color: "#166534", borderRadius: "6px", fontSize: "0.85rem", fontWeight: "700", textAlign: "center" }}>
+                {remotePrintToast}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -3889,6 +4068,102 @@ export default function Home() {
               >
                 બંધ કરો
               </button>
+            </div>
+            <div className="hide-on-print" style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
+              <button
+                type="button"
+                disabled={!!remotePrintSending}
+                onClick={() => sendRemotePrintJob("Office PC", "payment", selectedPaymentReceipt)}
+                className="btn btn-outline"
+                style={{ flex: 1, padding: "0.5rem", fontSize: "0.82rem", borderColor: "#0284c7", color: "#0284c7", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}
+              >
+                <Monitor size={15} /> Office PC પર પ્રિન્ટ
+              </button>
+              <button
+                type="button"
+                disabled={!!remotePrintSending}
+                onClick={() => sendRemotePrintJob("Ripal's PC", "payment", selectedPaymentReceipt)}
+                className="btn btn-outline"
+                style={{ flex: 1, padding: "0.5rem", fontSize: "0.82rem", borderColor: "#7c3aed", color: "#7c3aed", fontWeight: "700", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}
+              >
+                <Monitor size={15} /> Ripal's PC પર પ્રિન્ટ
+              </button>
+            </div>
+            {remotePrintToast && (
+              <div className="hide-on-print" style={{ marginTop: "0.5rem", padding: "0.45rem 0.75rem", background: "#dcfce7", color: "#166534", borderRadius: "6px", fontSize: "0.85rem", fontWeight: "700", textAlign: "center" }}>
+                {remotePrintToast}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* PRINT STATION CONFIGURATION MODAL */}
+      {showPrintStationModal && (
+        <div className="modal-overlay">
+          <div className="glass-panel animate-fade-in hide-on-print" style={{ padding: "1.5rem", maxWidth: "460px", width: "92%", backgroundColor: "#fff" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h2 style={{ color: "var(--primary)", margin: 0, fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Monitor size={20} /> Print Station (Auto-Print Receiver)
+              </h2>
+              <button type="button" onClick={() => setShowPrintStationModal(false)} className="btn btn-outline" style={{ padding: "0.4rem" }}><X size={18} /></button>
+            </div>
+
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1rem", lineHeight: "1.5" }}>
+              જે કમ્પ્યુટર (Office PC અથવા Ripal's PC) સાથે પ્રિન્ટર જોડાયેલું હોય, તે કમ્પ્યુટરમાં આ વિકલ્પ <strong>ON</strong> રાખો — એટલે મોબાઈલમાંથી પ્રિન્ટ મોકલતા જ અહીં આપોઆપ પ્રિન્ટ આવી જશે.
+            </p>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <label className="form-label" style={{ fontWeight: "700" }}>આ કમ્પ્યુટર કયું છે? (Device Name):</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                {["Office PC", "Ripal's PC"].map(dev => (
+                  <button
+                    key={dev}
+                    type="button"
+                    onClick={() => togglePrintStation(printStationActive, dev)}
+                    className="btn"
+                    style={{
+                      padding: "0.65rem",
+                      fontWeight: "800",
+                      border: printStationDevice === dev ? "2px solid var(--primary)" : "1.5px solid #cbd5e1",
+                      background: printStationDevice === dev ? "rgba(46, 125, 50, 0.1)" : "#fff",
+                      color: printStationDevice === dev ? "var(--primary)" : "#64748b"
+                    }}
+                  >
+                    🖥️ {dev}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: "1rem", borderRadius: "10px", background: printStationActive ? "#f0fdf4" : "#f8fafc", border: `1.5px solid ${printStationActive ? "#16a34a" : "#cbd5e1"}`, marginBottom: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: "800", color: printStationActive ? "#166534" : "#334155" }}>
+                  {printStationActive ? `🟢 Auto-Print ચાલુ છે (${printStationDevice})` : "⚪ Auto-Print બંધ છે"}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  {printStationActive ? "દર ૩.૫ સેકન્ડે નવી પ્રિન્ટ ચેક કરી રહ્યું છે..." : "મોબાઈલ પ્રિન્ટ મેળવવા માટે ચાલુ કરો"}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => togglePrintStation(!printStationActive, printStationDevice)}
+                className={`btn ${printStationActive ? "btn-outline" : "btn-primary"}`}
+                style={{ padding: "0.45rem 0.9rem", fontWeight: "700", borderColor: printStationActive ? "#dc2626" : "", color: printStationActive ? "#dc2626" : "" }}
+              >
+                {printStationActive ? "બંધ કરો" : "ચાલુ કરો"}
+              </button>
+            </div>
+
+            {lastPrintedJobInfo && (
+              <div style={{ padding: "0.65rem", background: "#eff6ff", borderRadius: "8px", fontSize: "0.8rem", color: "#1e40af", marginBottom: "1rem" }}>
+                <strong>છેલ્લી પ્રિન્ટ:</strong> {lastPrintedJobInfo.partyName || 'Bill'} (#{lastPrintedJobInfo.voucherId}) • {lastPrintedJobInfo.time}
+              </div>
+            )}
+
+            <div style={{ background: "#fffbeb", border: "1px solid #fde68a", padding: "0.75rem", borderRadius: "8px", fontSize: "0.78rem", color: "#92400e", lineHeight: "1.45" }}>
+              <strong>💡 ઝીરો-ક્લિક સીધી પ્રિન્ટ માટે ટિપ:</strong><br/>
+              જો કમ્પ્યુટર પર પ્રિન્ટ બોક્સ ખોલ્યા વગર સીધું જ પ્રિન્ટરમાંથી બિલ નીકળે એવું કરવું હોય, તો ડેસ્કટોપ પર Chrome ના શોર્ટકટમાં Target ની પાછળ <code>--kiosk-printing</code> ઉમેરીને ઓપન કરવું.
             </div>
           </div>
         </div>
