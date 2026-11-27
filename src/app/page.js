@@ -309,7 +309,7 @@ export default function Home() {
     style.id = 'payment-print-style';
     style.innerHTML = `
       @media print {
-        @page { size: 148mm 210mm portrait !important; margin: 6mm !important; }
+        @page { size: A5 portrait !important; margin: 5mm !important; }
         body * { visibility: hidden !important; }
         #payment-receipt-print-area, #payment-receipt-print-area * { visibility: visible !important; }
         #payment-receipt-print-area {
