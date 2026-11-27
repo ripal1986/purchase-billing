@@ -221,10 +221,11 @@ input[type="number"] {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    min-height: 185mm !important;
+    min-height: 170mm !important;
+    max-height: 194mm !important;
     height: auto !important;
     margin: 0 !important;
-    padding: 4mm 3.5mm !important;
+    padding: 3.5mm 3mm !important;
     box-sizing: border-box !important;
     border: 1.5px solid #000 !important;
     border-radius: 4px !important;
@@ -240,16 +241,23 @@ input[type="number"] {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    min-height: 185mm !important;
+    min-height: 170mm !important;
+    max-height: 194mm !important;
     height: auto !important;
     margin: 0 !important;
-    padding: 3mm 2.5mm !important;
+    padding: 2.5mm 2.5mm !important;
     box-sizing: border-box !important;
     border: 1.5px solid #000 !important;
     transform: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     font-size: 9pt !important;
+  }
+
+  .apmc-second-copy {
+    display: block !important;
+    page-break-before: always !important;
+    break-before: page !important;
   }
 
   .print-apmc-container table {
@@ -271,6 +279,10 @@ input[type="number"] {
   .show-on-print {
     display: block !important;
   }
+}
+
+.apmc-second-copy {
+  display: none;
 }
 
 .modal-overlay {

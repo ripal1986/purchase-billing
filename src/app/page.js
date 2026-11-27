@@ -3515,14 +3515,14 @@ export default function Home() {
                             else if (lastSavedData.items) items = lastSavedData.items;
                           } catch(e) {}
                           
-                          const minRows = 8;
+                          const minRows = 7;
                           const rows = [...items];
                           while (rows.length < minRows) rows.push(null);
 
                           return rows.map((it, idx) => {
                             if (!it) {
                               return (
-                                <tr key={`empty-${idx}`} style={{ height: "23pt" }}>
+                                <tr key={`empty-${idx}`} style={{ height: "20pt" }}>
                                   <td colSpan="5" style={{ border: "none", padding: "0" }}>&nbsp;</td>
                                 </tr>
                               );
@@ -3534,7 +3534,7 @@ export default function Home() {
                             const amt = Math.round((wKg / 20.0) * Number(it.purchaseRate));
 
                             return (
-                              <tr key={idx} style={{ height: "24pt" }}>
+                              <tr key={idx} style={{ height: "21pt" }}>
                                 <td className="px-2 text-center font-medium" style={{ paddingTop: '4px', paddingBottom: '4px', border: "none" }}>{idx + 1}</td>
                                 <td className="px-2 font-bold" style={{ paddingTop: '4px', paddingBottom: '4px', border: "none" }}>મગફળી ({it.variety})</td>
                                 <td className="px-2 text-right tabular-nums font-semibold" style={{ paddingTop: '4px', paddingBottom: '4px', border: "none" }}>{wKg}</td>
@@ -3589,7 +3589,9 @@ export default function Home() {
                 </footer>
               </div>
             </div>
-) : (<div style={{ width: "13.2cm", minHeight: "auto", height: "auto", boxSizing: "border-box", margin: "0 auto", padding: "0.2cm 0.4cm", backgroundColor: "#fff", color: "#000", fontFamily: "sans-serif", position: "relative", overflow: "visible" }} className="print-apmc-container">
+) : ((() => {
+  const renderClassicBill = (copyLabel, extraClass = "") => (
+    <div style={{ width: "13.2cm", minHeight: "auto", height: "auto", boxSizing: "border-box", margin: "0 auto", padding: "0.2cm 0.4cm", backgroundColor: "#fff", color: "#000", fontFamily: "sans-serif", position: "relative", overflow: "visible" }} className={`print-apmc-container ${extraClass}`}>
               {/* Header Section */}
               {lastSavedData.purchaseType === 'Direct' ? (
                 <>
@@ -3642,7 +3644,7 @@ export default function Home() {
                     <div style={{ flex: 1, textAlign: "center", fontSize: "9.5pt", lineHeight: "1.35", fontWeight: "bold" }} className="print-dark">
                       <div style={{ fontSize: "8.5pt" }}>(જુઓ ઉપવિધિ ૩૬ (૨))</div>
                       <div>વેચાણના આંકડાની રોકડ પાવતી (બીલ)</div>
-                      <div>વેચનાર માટે</div>
+                      <div>{copyLabel}</div>
                     </div>
 
                     <div style={{ width: "95px" }}></div>
@@ -3696,13 +3698,13 @@ export default function Home() {
                       else if (lastSavedData.items) items = lastSavedData.items;
                     } catch(e) {}
                     
-                    const minRows = lastSavedData.purchaseType === 'Direct' ? 12 : 10;
+                    const minRows = lastSavedData.purchaseType === 'Direct' ? 10 : 8;
                     const rows = [...items];
                     while(rows.length < minRows) rows.push(null);
 
                     return rows.map((it, idx) => {
                       if(!it) return (
-                        <tr key={`empty-${idx}`} style={{ height: "21pt" }}>
+                        <tr key={`empty-${idx}`} style={{ height: "19pt" }}>
                           <td style={{ borderLeft: "1px solid #000", borderRight: "1px solid #000", borderTop: "none", borderBottom: "none" }}></td>
                           <td colSpan="3" style={{ borderLeft: "1px solid #000", borderRight: "1px solid #000", borderTop: "none", borderBottom: "none" }}></td>
                           <td style={{ borderLeft: "1px solid #000", borderRight: "1px solid #000", borderTop: "none", borderBottom: "none" }}></td>
@@ -3728,7 +3730,7 @@ export default function Home() {
                       const [aRs, aPs] = amtStr.split('.');
 
                       return (
-                        <tr key={idx} style={{ height: "22pt", textAlign: "center", fontWeight: "bold", fontSize: "10.5pt" }}>
+                        <tr key={idx} style={{ height: "20pt", textAlign: "center", fontWeight: "bold", fontSize: "10.5pt" }}>
                           <td style={{ border: "1px solid #000", padding: "1px", textAlign: "left", borderTop: idx===0?"1px solid #000":"none", borderBottom:"none" }}>મગફળી ({it.variety})</td>
                           <td colSpan="3" style={{ borderLeft: "1px solid #000", borderRight: "1px solid #000", borderTop: idx===0?"1px solid #000":"none", borderBottom: "none", padding: "1px" }}>
                             {wKg}
@@ -3834,8 +3836,14 @@ export default function Home() {
                 </div>
               </div>
             </div>
-
-            )}<div className="hide-on-print" style={{ maxWidth: "440px", margin: "0 auto", marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.8rem", borderTop: "2px dashed #cbd5e1", paddingTop: "0.8rem" }}>
+  );
+  return (
+    <>
+      {renderClassicBill("વેચનાર માટે")}
+      {lastSavedData.purchaseType !== 'Direct' && renderClassicBill("APMC માટે (બજાર સમિતિ નકલ)", "apmc-second-copy")}
+    </>
+  );
+})())}<div className="hide-on-print" style={{ maxWidth: "440px", margin: "0 auto", marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.8rem", borderTop: "2px dashed #cbd5e1", paddingTop: "0.8rem" }}>
               <div style={{ display: "flex", gap: "1rem" }}>
                 
               <button type="button" onClick={() => {
