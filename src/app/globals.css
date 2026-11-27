@@ -148,12 +148,12 @@ input[type="number"] {
 
   @page {
     size: A5 portrait;
-    margin: 5mm;
+    margin: 5mm 5mm 5mm 14mm;
   }
 
   html, body {
-    width: 138mm !important;
-    max-width: 138mm !important;
+    width: 128mm !important;
+    max-width: 128mm !important;
     min-width: 0 !important;
     height: auto !important;
     min-height: 0 !important;
@@ -166,8 +166,8 @@ input[type="number"] {
 
   /* Reset height on containers that might force double pages */
   .app-container, .main-content, .modal-overlay {
-    width: 138mm !important;
-    max-width: 138mm !important;
+    width: 128mm !important;
+    max-width: 128mm !important;
     min-width: 0 !important;
     height: auto !important;
     min-height: 0 !important;
@@ -205,8 +205,8 @@ input[type="number"] {
   .print-area {
     padding: 0 !important;
     margin: 0 !important;
-    width: 138mm !important;
-    max-width: 138mm !important;
+    width: 128mm !important;
+    max-width: 128mm !important;
     min-width: 0 !important;
     transform: none !important;
     display: block !important;
@@ -215,28 +215,31 @@ input[type="number"] {
 
   .print-direct-container {
     width: 100% !important;
-    max-width: 136mm !important;
+    max-width: 127mm !important;
     min-width: 0 !important;
-    min-height: 0 !important;
+    min-height: 185mm !important;
     height: auto !important;
     margin: 0 auto !important;
-    padding: 3mm !important;
+    padding: 4mm 3.5mm !important;
     box-sizing: border-box !important;
     border: 1.5px solid #000 !important;
     border-radius: 4px !important;
     box-shadow: none !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
   }
 
   .print-apmc-container {
     width: 100% !important;
-    max-width: 136mm !important;
+    max-width: 127mm !important;
     min-width: 0 !important;
-    min-height: 0 !important;
+    min-height: 185mm !important;
     height: auto !important;
     margin: 0 auto !important;
-    padding: 2mm 2.5mm !important;
+    padding: 3mm 2.5mm !important;
     box-sizing: border-box !important;
     border: 1.5px solid #000 !important;
     transform: none !important;
