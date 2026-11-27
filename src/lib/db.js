@@ -1,5 +1,58 @@
 import { neon } from '@neondatabase/serverless';
 
+export function normalizeToYMD(dateStr, sheetName = '', dailyPurchaseId = '') {
+  if (!dateStr || typeof dateStr !== 'string') return '';
+  const trimmed = dateStr.trim();
+  if (!trimmed) return '';
+
+  const parts = trimmed.split(/[/.-]/);
+  if (parts.length === 3) {
+    let year, month, day;
+    if (parts[0].length === 4) {
+      year = parts[0];
+      month = parts[1].padStart(2, '0');
+      day = parts[2].padStart(2, '0');
+    } else {
+      year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+      const p0 = parseInt(parts[0], 10);
+      const p1 = parseInt(parts[1], 10);
+
+      if (p0 > 12) {
+        day = parts[0].padStart(2, '0');
+        month = parts[1].padStart(2, '0');
+      } else if (p1 > 12) {
+        month = parts[0].padStart(2, '0');
+        day = parts[1].padStart(2, '0');
+      } else {
+        // Ambiguous (both <= 12): check dailyPurchaseId (e.g. PUR-20261105-001) first
+        const purMatch = (dailyPurchaseId || '').match(/PUR-(\d{4})(\d{2})(\d{2})/i);
+        if (purMatch) {
+          const dMonth = parseInt(purMatch[2], 10);
+          const dDay = parseInt(purMatch[3], 10);
+          if ((p0 === dMonth && p1 === dDay) || (p0 === dDay && p1 === dMonth)) {
+            month = purMatch[2];
+            day = purMatch[3];
+            return `${year}-${month}-${day}`;
+          }
+        }
+        // Google Sheets US format uses MM/DD/YYYY (4-digit year with '/')
+        if (parts[2].length === 4 && trimmed.includes('/')) {
+          month = parts[0].padStart(2, '0');
+          day = parts[1].padStart(2, '0');
+        } else if (sheetName === 'Direct') {
+          month = parts[0].padStart(2, '0');
+          day = parts[1].padStart(2, '0');
+        } else {
+          day = parts[0].padStart(2, '0');
+          month = parts[1].padStart(2, '0');
+        }
+      }
+    }
+    return `${year}-${month}-${day}`;
+  }
+  return trimmed;
+}
+
 let dbInitialized = false;
 
 export function getDb() {
@@ -124,7 +177,7 @@ export function formatDbRow(row) {
     purchaseType: row.purchase_type || 'APMC',
     rowIndex: row.id,
     voucherId: row.voucher_id || '',
-    date: row.date || '',
+    date: normalizeToYMD(row.date || '', row.purchase_type || '', row.daily_purchase_id || ''),
     dailyPurchaseId: row.daily_purchase_id ? String(row.daily_purchase_id) : '',
     farmerName: row.farmer_name || '',
     variety: row.variety || '',

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb, initDb } from '@/lib/db';
+import { getDb, initDb, normalizeToYMD } from '@/lib/db';
 import { getGoogleSheetsClient } from '@/lib/googleAuth';
 
 const SPREADSHEET_ID = '1Xsb46eOHnii34YM_UEY3LERAFrggJZMrPzm1vVc8TNw';
@@ -74,10 +74,11 @@ export async function POST(req) {
 
     const sheetToUpdate = sheetName || 'APMC';
     const purchaseType = (sheetToUpdate === 'APMC' || sheetToUpdate === 'Sheet1') ? 'APMC' : 'Direct';
+    const normDate = normalizeToYMD(date || '', purchaseType, dailyPurchaseId || '');
 
     const rowValues = [
       voucherId || "",
-      date || "",
+      normDate || date || "",
       dailyPurchaseId || "",
       farmerName || "",
       variety || "",
@@ -109,7 +110,7 @@ export async function POST(req) {
             UPDATE purchases SET
               voucher_id = COALESCE(NULLIF(${voucherId || ''}, ''), voucher_id),
               purchase_type = ${purchaseType},
-              date = ${date || ''},
+              date = ${normDate || date || ''},
               daily_purchase_id = ${dailyPurchaseId ? String(dailyPurchaseId) : ''},
               farmer_name = ${farmerName || ''},
               village_name = ${villageName || ''},
@@ -138,7 +139,7 @@ export async function POST(req) {
           updatedRows = await sql`
             UPDATE purchases SET
               purchase_type = ${purchaseType},
-              date = ${date || ''},
+              date = ${normDate || date || ''},
               daily_purchase_id = ${dailyPurchaseId ? String(dailyPurchaseId) : ''},
               farmer_name = ${farmerName || ''},
               village_name = ${villageName || ''},

@@ -23,7 +23,7 @@ const numberToWords = (num) => {
 
 export const dynamic = 'force-dynamic';
 
-function normalizeToYMD(dateStr, sheetName = '') {
+function normalizeToYMD(dateStr, sheetName = '', dailyPurchaseId = '') {
   if (!dateStr || typeof dateStr !== 'string') return '';
   const trimmed = dateStr.trim();
   if (!trimmed) return '';
@@ -46,12 +46,27 @@ function normalizeToYMD(dateStr, sheetName = '') {
       } else if (p1 > 12) {
         month = parts[0].padStart(2, '0');
         day = parts[1].padStart(2, '0');
-      } else if (sheetName === 'Direct') {
-        month = parts[0].padStart(2, '0');
-        day = parts[1].padStart(2, '0');
       } else {
-        day = parts[0].padStart(2, '0');
-        month = parts[1].padStart(2, '0');
+        const purMatch = (dailyPurchaseId || '').match(/PUR-(\d{4})(\d{2})(\d{2})/i);
+        if (purMatch) {
+          const dMonth = parseInt(purMatch[2], 10);
+          const dDay = parseInt(purMatch[3], 10);
+          if ((p0 === dMonth && p1 === dDay) || (p0 === dDay && p1 === dMonth)) {
+            month = purMatch[2];
+            day = purMatch[3];
+            return `${year}-${month}-${day}`;
+          }
+        }
+        if (parts[2].length === 4 && trimmed.includes('/')) {
+          month = parts[0].padStart(2, '0');
+          day = parts[1].padStart(2, '0');
+        } else if (sheetName === 'Direct') {
+          month = parts[0].padStart(2, '0');
+          day = parts[1].padStart(2, '0');
+        } else {
+          day = parts[0].padStart(2, '0');
+          month = parts[1].padStart(2, '0');
+        }
       }
     }
     return `${year}-${month}-${day}`;
@@ -990,7 +1005,7 @@ export default function Home() {
     const completedEntries = entriesToExport.filter(e => {
       const actualSheetName = e.sheetName || e.purchaseType || 'APMC';
       if (e.status?.trim().toLowerCase() !== 'completed' || actualSheetName !== sheetFilter) return false;
-      const entryDateStr = normalizeToYMD(e.date, actualSheetName);
+      const entryDateStr = normalizeToYMD(e.date, actualSheetName, e.dailyPurchaseId);
       return entryDateStr && entryDateStr >= normExportStart && entryDateStr <= normExportEnd;
     });
 
@@ -1017,7 +1032,7 @@ export default function Home() {
       <REQUESTDATA>`;
 
     completedEntries.forEach(entry => {
-      const ymd = normalizeToYMD(entry.date, entry.sheetName || entry.purchaseType);
+      const ymd = normalizeToYMD(entry.date, entry.sheetName || entry.purchaseType, entry.dailyPurchaseId);
       const tallyDate = ymd ? ymd.replace(/-/g, "") : "";
 
       const voucherNo = escapeXml(entry.voucherId);

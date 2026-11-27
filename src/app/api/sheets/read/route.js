@@ -1,46 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getDb, initDb, formatDbRow } from '@/lib/db';
+import { getDb, initDb, formatDbRow, normalizeToYMD } from '@/lib/db';
 import { getGoogleSheetsClient } from '@/lib/googleAuth';
 
 const SPREADSHEET_ID = '1Xsb46eOHnii34YM_UEY3LERAFrggJZMrPzm1vVc8TNw';
 
 export const dynamic = 'force-dynamic';
-
-function normalizeToYMD(dateStr, sheetName = '') {
-  if (!dateStr || typeof dateStr !== 'string') return '';
-  const trimmed = dateStr.trim();
-  if (!trimmed) return '';
-
-  const parts = trimmed.split(/[/.-]/);
-  if (parts.length === 3) {
-    let year, month, day;
-    if (parts[0].length === 4) {
-      year = parts[0];
-      month = parts[1].padStart(2, '0');
-      day = parts[2].padStart(2, '0');
-    } else {
-      year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-      const p0 = parseInt(parts[0], 10);
-      const p1 = parseInt(parts[1], 10);
-
-      if (p0 > 12) {
-        day = parts[0].padStart(2, '0');
-        month = parts[1].padStart(2, '0');
-      } else if (p1 > 12) {
-        month = parts[0].padStart(2, '0');
-        day = parts[1].padStart(2, '0');
-      } else if (sheetName === 'Direct') {
-        month = parts[0].padStart(2, '0');
-        day = parts[1].padStart(2, '0');
-      } else {
-        day = parts[0].padStart(2, '0');
-        month = parts[1].padStart(2, '0');
-      }
-    }
-    return `${year}-${month}-${day}`;
-  }
-  return trimmed;
-}
 
 export async function GET(request) {
   const url = new URL(request.url);
@@ -64,8 +28,8 @@ export async function GET(request) {
 
         // Sort by normalized date descending, then dailyPurchaseId descending
         allData.sort((a, b) => {
-          const dateA = normalizeToYMD(a.date, a.sheetName) || '';
-          const dateB = normalizeToYMD(b.date, b.sheetName) || '';
+          const dateA = normalizeToYMD(a.date, a.sheetName, a.dailyPurchaseId) || '';
+          const dateB = normalizeToYMD(b.date, b.sheetName, b.dailyPurchaseId) || '';
           if (dateA !== dateB) return dateB.localeCompare(dateA);
           const numA = parseInt(a.dailyPurchaseId, 10);
           const numB = parseInt(b.dailyPurchaseId, 10);
@@ -79,7 +43,7 @@ export async function GET(request) {
           const normStart = normalizeToYMD(startDate);
           const normEnd = normalizeToYMD(endDate);
           allData = allData.filter(e => {
-            const entryDateStr = normalizeToYMD(e.date, e.sheetName);
+            const entryDateStr = normalizeToYMD(e.date, e.sheetName, e.dailyPurchaseId);
             return entryDateStr && entryDateStr >= normStart && entryDateStr <= normEnd;
           });
         } else if (limit) {

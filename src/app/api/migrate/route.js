@@ -1,47 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getDb, initDb } from '@/lib/db';
+import { getDb, initDb, normalizeToYMD } from '@/lib/db';
 import { getGoogleSheetsClient } from '@/lib/googleAuth';
 
 const SPREADSHEET_ID = '1Xsb46eOHnii34YM_UEY3LERAFrggJZMrPzm1vVc8TNw';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-
-function normalizeToYMD(dateStr, sheetName = '') {
-  if (!dateStr || typeof dateStr !== 'string') return '';
-  const trimmed = dateStr.trim();
-  if (!trimmed) return '';
-
-  const parts = trimmed.split(/[/.-]/);
-  if (parts.length === 3) {
-    let year, month, day;
-    if (parts[0].length === 4) {
-      year = parts[0];
-      month = parts[1].padStart(2, '0');
-      day = parts[2].padStart(2, '0');
-    } else {
-      year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
-      const p0 = parseInt(parts[0], 10);
-      const p1 = parseInt(parts[1], 10);
-
-      if (p0 > 12) {
-        day = parts[0].padStart(2, '0');
-        month = parts[1].padStart(2, '0');
-      } else if (p1 > 12) {
-        month = parts[0].padStart(2, '0');
-        day = parts[1].padStart(2, '0');
-      } else if (sheetName === 'Direct') {
-        month = parts[0].padStart(2, '0');
-        day = parts[1].padStart(2, '0');
-      } else {
-        day = parts[0].padStart(2, '0');
-        month = parts[1].padStart(2, '0');
-      }
-    }
-    return `${year}-${month}-${day}`;
-  }
-  return trimmed;
-}
 
 export async function POST(req) {
   try {
@@ -75,11 +39,13 @@ export async function POST(req) {
         // Skip if row is completely empty
         if (!row[0] && !row[1] && !row[2] && !row[3]) continue;
 
+        const rawDate = (row[1] || "").toString().trim();
+        const dailyId = (row[2] || "").toString().trim();
         list.push({
           voucherId: (row[0] || "").toString().trim(),
           purchaseType: purchaseType,
-          date: (row[1] || "").toString().trim(),
-          dailyPurchaseId: (row[2] || "").toString().trim(),
+          date: normalizeToYMD(rawDate, purchaseType, dailyId) || rawDate,
+          dailyPurchaseId: dailyId,
           farmerName: (row[3] || "").toString().trim(),
           variety: row[4] || "",
           netWeight: parseFloat(row[5]) || 0,
