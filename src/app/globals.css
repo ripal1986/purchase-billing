@@ -148,12 +148,12 @@ input[type="number"] {
 
   @page {
     size: A5 portrait;
-    margin: 5mm 5mm 5mm 14mm;
+    margin: 5mm 5mm 5mm 12mm;
   }
 
   html, body {
-    width: 128mm !important;
-    max-width: 128mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     height: auto !important;
     min-height: 0 !important;
@@ -162,12 +162,13 @@ input[type="number"] {
     background: #ffffff !important;
     overflow: visible !important;
     box-sizing: border-box !important;
+    display: block !important;
   }
 
-  /* Reset height on containers that might force double pages */
+  /* Reset height and flex centering on containers that clip left edge */
   .app-container, .main-content, .modal-overlay {
-    width: 128mm !important;
-    max-width: 128mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     height: auto !important;
     min-height: 0 !important;
@@ -175,6 +176,8 @@ input[type="number"] {
     padding: 0 !important;
     overflow: visible !important;
     position: static !important;
+    display: block !important;
+    background: transparent !important;
     box-sizing: border-box !important;
   }
 
@@ -186,27 +189,28 @@ input[type="number"] {
     visibility: visible; 
   }
 
-  .print-panel { 
-    position: static !important; 
-    left: auto !important; 
-    top: auto !important; 
-    width: 148mm !important; 
-    max-width: 148mm !important; 
-    min-width: 148mm !important;
+  .print-panel {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
     height: auto !important;
-    box-shadow: none !important; 
-    border: none !important; 
-    background: #ffffff !important; 
-    padding: 0 !important; 
-    margin: 0 auto !important; 
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
     display: block !important;
+    box-sizing: border-box !important;
   }
 
   .print-area {
     padding: 0 !important;
     margin: 0 !important;
-    width: 128mm !important;
-    max-width: 128mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     transform: none !important;
     display: block !important;
@@ -215,11 +219,11 @@ input[type="number"] {
 
   .print-direct-container {
     width: 100% !important;
-    max-width: 127mm !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     min-height: 185mm !important;
     height: auto !important;
-    margin: 0 auto !important;
+    margin: 0 !important;
     padding: 4mm 3.5mm !important;
     box-sizing: border-box !important;
     border: 1.5px solid #000 !important;
@@ -234,11 +238,11 @@ input[type="number"] {
 
   .print-apmc-container {
     width: 100% !important;
-    max-width: 127mm !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     min-height: 185mm !important;
     height: auto !important;
-    margin: 0 auto !important;
+    margin: 0 !important;
     padding: 3mm 2.5mm !important;
     box-sizing: border-box !important;
     border: 1.5px solid #000 !important;
