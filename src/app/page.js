@@ -372,6 +372,70 @@ export default function Home() {
   const [remotePrintSending, setRemotePrintSending] = useState("");
   const [remotePrintToast, setRemotePrintToast] = useState("");
   const [lastPrintedJobInfo, setLastPrintedJobInfo] = useState(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const shareElementAsPdfWhatsApp = async (selector, fileName, messageText, mobileNumber = "") => {
+    const targetEl = document.querySelector(selector);
+    if (!targetEl) {
+      alert("બિલ પ્રીવ્યૂ મળ્યું નથી.");
+      return;
+    }
+    setIsGeneratingPdf(true);
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(targetEl, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 6;
+      const maxW = pageW - margin * 2;
+      const maxH = pageH - margin * 2;
+      const props = pdf.getImageProperties(imgData);
+      let w = maxW;
+      let h = (props.height * w) / props.width;
+      if (h > maxH) {
+        h = maxH;
+        w = (props.width * h) / props.height;
+      }
+      pdf.addImage(imgData, "PNG", (pageW - w) / 2, margin, w, h);
+
+      const pdfBlob = pdf.output("blob");
+      const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const pdfFile = new File([pdfBlob], safeName, { type: "application/pdf" });
+
+      if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title: safeName,
+          text: messageText,
+        });
+      } else {
+        pdf.save(safeName);
+        setRemotePrintToast("📄 PDF ડાઉનલોડ થઈ ગઈ છે — WhatsApp માં શેર કરો!");
+        setTimeout(() => setRemotePrintToast(""), 4000);
+        const cleanPhone = mobileNumber ? mobileNumber.replace(/\D/g, "") : "";
+        const waUrl = cleanPhone && cleanPhone.length >= 10
+          ? `whatsapp://send?phone=91${cleanPhone.slice(-10)}&text=${encodeURIComponent(messageText)}`
+          : `whatsapp://send?text=${encodeURIComponent(messageText)}`;
+        window.location.href = waUrl;
+      }
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        console.error("PDF Share error:", err);
+        alert("PDF શેર કરવામાં એરર: " + (err.message || "કૃપા કરીને ફરી પ્રયાસ કરો."));
+      }
+    }
+    setIsGeneratingPdf(false);
+  };
 
   useEffect(() => {
     const savedActive = localStorage.getItem("printStationActive") === "true";
@@ -3807,6 +3871,23 @@ export default function Home() {
                 // Use window.location.href to trigger the intent without opening a blank tab
                 window.location.href = waUrl;
               }} className="btn" style={{ flex: 1, background: "#25D366", color: "white" }}><Share2 size={18} /> WhatsApp</button>
+              <button
+                type="button"
+                disabled={isGeneratingPdf}
+                onClick={() => {
+                  const firmName = voucherSettings.firmName || "Darshan Seeds Industries";
+                  const dmy = lastSavedData.date ? lastSavedData.date.split('-').reverse().join('-') : '';
+                  const amt = Math.floor(Number(lastSavedData.finalAmount) || 0).toLocaleString('en-IN');
+                  const wt = Math.floor(Number(lastSavedData.finalWeight) || 0);
+                  const msg = `Dear ${lastSavedData.farmerName},\nYour Purchase Bill #${lastSavedData.voucherId} on Date ${dmy} has been generated of Rs.${amt}.00 (Weight: ${wt} kg).\nThanks, ${firmName}`;
+                  const fname = `Bill_${lastSavedData.voucherId || '0'}_${(lastSavedData.farmerName || 'Farmer').trim()}.pdf`;
+                  shareElementAsPdfWhatsApp(".print-direct-container, .print-apmc-container", fname, msg, lastSavedData.mobileNumber);
+                }}
+                className="btn"
+                style={{ flex: 1, background: "#059669", color: "white", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}
+              >
+                <Download size={16} /> {isGeneratingPdf ? "PDF..." : "PDF + WhatsApp"}
+              </button>
               <button type="button" onClick={() => window.print()} className="btn btn-primary" style={{ flex: 1 }}><Printer size={18} /> પ્રિન્ટ (A5)</button>
               </div>
 
@@ -4074,7 +4155,24 @@ export default function Home() {
                 className="btn"
                 style={{ flex: 1, padding: "0.65rem", background: "#25D366", color: "white", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
               >
-                <Share2 size={16} /> WhatsApp શેર
+                <Share2 size={16} /> WhatsApp
+              </button>
+
+              <button
+                type="button"
+                disabled={isGeneratingPdf}
+                onClick={() => {
+                  const firmName = voucherSettings.firmName || "Darshan Seeds Industries";
+                  const dmy = selectedPaymentReceipt.date ? selectedPaymentReceipt.date.split('-').reverse().join('-') : '';
+                  const amt = Number(selectedPaymentReceipt.amount || 0).toLocaleString('en-IN');
+                  const msg = `Dear ${selectedPaymentReceipt.partyName},\nYour ${selectedPaymentReceipt.paymentType === 'Payment' ? 'Payment Voucher' : 'Receipt'} #${selectedPaymentReceipt.receiptNo} on Date ${dmy} has been generated of Rs.${amt}.00 (${selectedPaymentReceipt.paymentMode}).\nThanks, ${firmName}`;
+                  const fname = `Receipt_${selectedPaymentReceipt.receiptNo || '0'}_${(selectedPaymentReceipt.partyName || 'Party').trim()}.pdf`;
+                  shareElementAsPdfWhatsApp("#payment-receipt-print-area", fname, msg, selectedPaymentReceipt.mobileNumber);
+                }}
+                className="btn"
+                style={{ flex: 1, padding: "0.65rem", background: "#059669", color: "white", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}
+              >
+                <Download size={15} /> {isGeneratingPdf ? "PDF..." : "PDF + WhatsApp"}
               </button>
 
               <button
